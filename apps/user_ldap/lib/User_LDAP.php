@@ -167,7 +167,7 @@ class User_LDAP extends BackendUtility implements IUserBackend, UserInterface, I
 		return $users[0];
 	}
 
-		/**
+	/**
 	 * Check if the password is correct without logging in the user
 	 *
 	 * @param string $uid The username
