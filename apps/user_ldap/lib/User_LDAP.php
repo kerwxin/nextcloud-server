@@ -167,7 +167,7 @@ class User_LDAP extends BackendUtility implements IUserBackend, UserInterface, I
 		return $users[0];
 	}
 
-	/**
+		/**
 	 * Check if the password is correct without logging in the user
 	 *
 	 * @param string $uid The username
@@ -175,39 +175,19 @@ class User_LDAP extends BackendUtility implements IUserBackend, UserInterface, I
 	 * @return false|string
 	 */
 	public function checkPassword($uid, $password) {
-		try {
-			$ldapRecord = $this->getLDAPUserByLoginName($uid);
-		} catch (NotOnLDAP $e) {
-			$this->logger->debug(
-				$e->getMessage(),
-				['app' => 'user_ldap', 'exception' => $e]
-			);
+		$username = $this->loginName2UserName($uid);
+		if(!$username) {
 			return false;
 		}
-		$dn = $ldapRecord['dn'][0];
-		$user = $this->access->userManager->get($dn);
 
-		if (!$user instanceof User) {
-			$this->logger->warning(
-				'LDAP Login: Could not get user object for DN ' . $dn .
-				'. Maybe the LDAP entry has no set display name attribute?',
-				['app' => 'user_ldap']
-			);
-			return false;
-		}
-		if ($user->getUsername() !== false) {
-			//are the credentials OK?
-			if (!$this->access->areCredentialsValid($dn, $password)) {
-				return false;
-			}
-
+		$dn = $this->access->username2dn($username);
+		//are the credentials OK?
+		if ($dn && $this->access->areCredentialsValid($dn, $password)) {
+			$user = $this->access->userManager->get($username);
 			$this->access->cacheUserExists($user->getUsername());
-			$user->processAttributes($ldapRecord);
 			$user->markLogin();
-
 			return $user->getUsername();
 		}
-
 		return false;
 	}
 
