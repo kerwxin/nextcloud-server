@@ -184,6 +184,13 @@ class User_LDAP extends BackendUtility implements IUserBackend, UserInterface, I
 		//are the credentials OK?
 		if ($dn && $this->access->areCredentialsValid($dn, $password)) {
 			$user = $this->access->userManager->get($username);
+			if (!$user instanceof User) {
+				$this->logger->warning(
+					'LDAP Login: Could not get user object for DN ' . $dn .
+					'. Maybe the LDAP entry has no set display name attribute?',
+					['app' => 'user_ldap']
+			);
+
 			$this->access->cacheUserExists($user->getUsername());
 			$user->markLogin();
 			return $user->getUsername();
