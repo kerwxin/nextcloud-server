@@ -189,8 +189,9 @@ class User_LDAP extends BackendUtility implements IUserBackend, UserInterface, I
 					'LDAP Login: Could not get user object for DN ' . $dn .
 					'. Maybe the LDAP entry has no set display name attribute?',
 					['app' => 'user_ldap']
-			);
-
+				);
+				return false;
+			}
 			$this->access->cacheUserExists($user->getUsername());
 			$user->markLogin();
 			return $user->getUsername();
