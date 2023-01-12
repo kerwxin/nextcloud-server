@@ -113,7 +113,7 @@ class User_LDAP extends BackendUtility implements IUserBackend, UserInterface, I
 	 * @return string|false
 	 * @throws \Exception
 	 */
-	public function loginName2UserName($loginName, bool $ignoreCacheIfFalseFound = false) {
+	public function loginName2UserName($loginName, bool $ignoreCacheIfFalseFound = false, bool $processUserAttributes = false) {
 		$cacheKey = 'loginName2UserName-' . $loginName;
 		$username = $this->access->connection->getFromCache($cacheKey);
 
@@ -133,6 +133,9 @@ class User_LDAP extends BackendUtility implements IUserBackend, UserInterface, I
 			}
 			$username = $user->getUsername();
 			$this->access->connection->writeToCache($cacheKey, $username);
+			if($processUserAttributes) {
+				$user->processAttributes($ldapRecord);
+			}
 			return $username;
 		} catch (NotOnLDAP $e) {
 			$this->access->connection->writeToCache($cacheKey, false);
@@ -176,7 +179,7 @@ class User_LDAP extends BackendUtility implements IUserBackend, UserInterface, I
 	 * @return false|string
 	 */
 	public function checkPassword($uid, $password) {
-		$username = $this->loginName2UserName($uid, true);
+		$username = $this->loginName2UserName($uid, true, true);
 		if(!$username) {
 			return false;
 		}
