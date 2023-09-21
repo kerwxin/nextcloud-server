@@ -26,6 +26,9 @@ namespace OCP\Files\Search;
 
 /**
  * @since 12.0.0
+ *
+ * @psalm-type ParamSingleValue = \DateTime|int|string|bool
+ * @psalm-type ParamValue = ParamSingleValue|list<ParamSingleValue>
  */
 interface ISearchComparison extends ISearchOperator {
 	public const COMPARE_EQUAL = 'eq';
@@ -36,6 +39,7 @@ interface ISearchComparison extends ISearchOperator {
 	public const COMPARE_LIKE = 'like';
 	public const COMPARE_LIKE_CASE_SENSITIVE = 'clike';
 	public const COMPARE_DEFINED = 'is-defined';
+	public const COMPARE_IN = 'in';
 
 	public const HINT_PATH_EQ_HASH = 'path_eq_hash'; // transform `path = "$path"` into `path_hash = md5("$path")`, on by default
 
@@ -68,8 +72,8 @@ interface ISearchComparison extends ISearchOperator {
 	/**
 	 * Get the value to compare the field with
 	 *
-	 * @return string|integer|bool|\DateTime
+	 * @return ParamValue
 	 * @since 12.0.0
 	 */
-	public function getValue(): string|int|bool|\DateTime;
+	public function getValue(): string|int|bool|\DateTime|array;
 }
