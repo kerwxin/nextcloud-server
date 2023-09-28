@@ -113,12 +113,12 @@ class User_LDAP extends BackendUtility implements IUserBackend, UserInterface, I
 	 * @return string|false
 	 * @throws \Exception
 	 */
-	public function loginName2UserName($loginName, bool $ignoreCacheIfFalseFound = false, bool $processUserAttributes = false) {
+	public function loginName2UserName($loginName, bool $forceLdapRefetch = false) {
 		$cacheKey = 'loginName2UserName-' . $loginName;
 		$username = $this->access->connection->getFromCache($cacheKey);
 
-		$forceLdapFetch = ($username === false && $ignoreCacheIfFalseFound);
-		if ($username !== null && !$forceLdapFetch) {
+		$ignoreCache = ($username === false && $forceLdapRefetch);
+		if ($username !== null && !$ignoreCache) {
 			return $username;
 		}
 
@@ -133,7 +133,7 @@ class User_LDAP extends BackendUtility implements IUserBackend, UserInterface, I
 			}
 			$username = $user->getUsername();
 			$this->access->connection->writeToCache($cacheKey, $username);
-			if($processUserAttributes) {
+			if ($forceLdapRefetch) {
 				$user->processAttributes($ldapRecord);
 			}
 			return $username;
@@ -179,27 +179,33 @@ class User_LDAP extends BackendUtility implements IUserBackend, UserInterface, I
 	 * @return false|string
 	 */
 	public function checkPassword($uid, $password) {
-		$username = $this->loginName2UserName($uid, true, true);
-		if(!$username) {
+		$username = $this->loginName2UserName($uid, true);
+		if (!$username) {
 			return false;
 		}
-
 		$dn = $this->access->username2dn($username);
-		//are the credentials OK?
-		if ($dn && $this->access->areCredentialsValid($dn, $password)) {
-			$user = $this->access->userManager->get($username);
-			if (!$user instanceof User) {
-				$this->logger->warning(
-					'LDAP Login: Could not get user object for DN ' . $dn .
-					'. Maybe the LDAP entry has no set display name attribute?',
-					['app' => 'user_ldap']
-				);
+		$user = $this->access->userManager->get($dn);
+
+		if (!$user instanceof User) {
+			$this->logger->warning(
+				'LDAP Login: Could not get user object for DN ' . $dn .
+				'. Maybe the LDAP entry has no set display name attribute?',
+				['app' => 'user_ldap']
+			);
+			return false;
+		}
+		if ($user->getUsername() !== false) {
+			//are the credentials OK?
+			if (!$this->access->areCredentialsValid($dn, $password)) {
 				return false;
 			}
+
 			$this->access->cacheUserExists($user->getUsername());
 			$user->markLogin();
+
 			return $user->getUsername();
 		}
+
 		return false;
 	}
 
