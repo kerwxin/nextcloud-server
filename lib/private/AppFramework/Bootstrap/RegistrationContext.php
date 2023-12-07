@@ -49,6 +49,7 @@ use OCP\Http\WellKnown\IHandler;
 use OCP\Notification\INotifier;
 use OCP\Profile\ILinkAction;
 use OCP\Search\IProvider;
+use OCP\Settings\IDeclarativeSettingsForm;
 use OCP\SetupCheck\ISetupCheck;
 use OCP\Share\IPublicShareTemplateProvider;
 use OCP\SpeechToText\ISpeechToTextProvider;
@@ -157,6 +158,10 @@ class RegistrationContext {
 
 	/** @var PreviewProviderRegistration[] */
 	private array $previewProviders = [];
+
+	/** @var ServiceRegistration<IDeclarativeSettingsForm>[] */
+	private array $declarativeSettings = [];
+
 
 	public function __construct(LoggerInterface $logger) {
 		$this->logger = $logger;
@@ -392,6 +397,13 @@ class RegistrationContext {
 					$setupCheckClass
 				);
 			}
+
+			public function registerDeclarativeSettings(string $declarativeSettingsClass): void {
+				$this->context->registerDeclarativeSettings(
+					$this->appId,
+					$declarativeSettingsClass
+				);
+			}
 		};
 	}
 
@@ -553,6 +565,14 @@ class RegistrationContext {
 	public function registerSetupCheck(string $appId, string $setupCheckClass): void {
 		$this->setupChecks[] = new ServiceRegistration($appId, $setupCheckClass);
 	}
+
+	/**
+	 * @psalm-param class-string<IDeclarativeSettingsForm> $declarativeSettingsClass
+	 */
+	public function registerDeclarativeSettings(string $appId, string $declarativeSettingsClass): void {
+		$this->declarativeSettings[] = new ServiceRegistration($appId, $declarativeSettingsClass);
+	}
+
 
 	/**
 	 * @param App[] $apps
@@ -869,5 +889,12 @@ class RegistrationContext {
 	 */
 	public function getSetupChecks(): array {
 		return $this->setupChecks;
+	}
+
+	/**
+	 * @return ServiceRegistration<IDeclarativeSettingsForm>[]
+	 */
+	public function getDeclarativeSettings(): array {
+		return $this->declarativeSettings;
 	}
 }

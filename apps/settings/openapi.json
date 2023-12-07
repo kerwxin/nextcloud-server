@@ -19,16 +19,40 @@
                 "scheme": "bearer"
             }
         },
-        "schemas": {}
+        "schemas": {
+            "OCSMeta": {
+                "type": "object",
+                "required": [
+                    "status",
+                    "statuscode"
+                ],
+                "properties": {
+                    "status": {
+                        "type": "string"
+                    },
+                    "statuscode": {
+                        "type": "integer"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "totalitems": {
+                        "type": "string"
+                    },
+                    "itemsperpage": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
     },
     "paths": {
-        "/index.php/settings/admin/log/download": {
-            "get": {
-                "operationId": "log_settings-download",
-                "summary": "download logfile",
-                "description": "This endpoint requires admin access",
+        "/ocs/v2.php/settings/api/declarative": {
+            "post": {
+                "operationId": "declarative_settings-set-value",
+                "summary": "Sets a declarative settings value",
                 "tags": [
-                    "log_settings"
+                    "declarative_settings"
                 ],
                 "security": [
                     {
@@ -38,21 +62,101 @@
                         "basic_auth": []
                     }
                 ],
+                "parameters": [
+                    {
+                        "name": "app",
+                        "in": "query",
+                        "description": "ID of the app",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "formId",
+                        "in": "query",
+                        "description": "ID of the form",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "fieldId",
+                        "in": "query",
+                        "description": "ID of the field",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "value",
+                        "in": "query",
+                        "description": "Value to be saved",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "Logfile returned",
-                        "headers": {
-                            "Content-Disposition": {
+                        "description": "Value set successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                },
+                                                "data": {
+                                                    "nullable": true
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Not logged in or not an admin user",
+                        "content": {
+                            "text/plain": {
                                 "schema": {
                                     "type": "string"
                                 }
                             }
-                        },
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid arguments to save value",
                         "content": {
-                            "application/octet-stream": {
+                            "text/plain": {
                                 "schema": {
-                                    "type": "string",
-                                    "format": "binary"
+                                    "type": "string"
                                 }
                             }
                         }
