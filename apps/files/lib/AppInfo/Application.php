@@ -59,8 +59,10 @@ use OCP\Collaboration\Reference\RenderReferenceEvent;
 use OCP\Collaboration\Resources\IProviderManager;
 use OCP\EventDispatcher\IEventDispatcher;
 use OCP\Files\Cache\CacheEntryRemovedEvent;
+use OCP\Files\Events\Node\BeforeNodeCopiedEvent;
 use OCP\Files\Events\Node\BeforeNodeDeletedEvent;
 use OCP\Files\Events\Node\BeforeNodeRenamedEvent;
+use OCP\Files\Events\Node\NodeCopiedEvent;
 use OCP\IConfig;
 use OCP\IPreview;
 use OCP\IRequest;
@@ -129,6 +131,8 @@ class Application extends App implements IBootstrap {
 		$context->registerEventListener(BeforeNodeDeletedEvent::class, SyncLivePhotosListener::class);
 		$context->registerEventListener(BeforeNodeRestoredEvent::class, SyncLivePhotosListener::class);
 		$context->registerEventListener(CacheEntryRemovedEvent::class, SyncLivePhotosListener::class);
+		$context->registerEventListener(BeforeNodeCopiedEvent::class, SyncLivePhotosListener::class);
+		$context->registerEventListener(NodeCopiedEvent::class, SyncLivePhotosListener::class);
 
 		$context->registerSearchProvider(FilesSearchProvider::class);
 

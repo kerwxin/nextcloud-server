@@ -191,7 +191,7 @@ class HookConnector {
 		$this->root->emit('\OC\Files', 'preCopy', [$source, $target]);
 		$this->dispatcher->dispatch('\OCP\Files::preCopy', new GenericEvent([$source, $target]));
 
-		$event = new BeforeNodeCopiedEvent($source, $target);
+		$event = new BeforeNodeCopiedEvent($source, $target, $arguments['run']);
 		$this->dispatcher->dispatchTyped($event);
 	}
 
