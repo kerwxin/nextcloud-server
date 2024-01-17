@@ -26,9 +26,9 @@ declare(strict_types=1);
 namespace Test\Authentication\Token;
 
 use OC;
-use OC\Authentication\Token\IToken;
 use OC\Authentication\Token\PublicKeyToken;
 use OC\Authentication\Token\PublicKeyTokenMapper;
+use OCP\Authentication\Token\IToken;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 use OCP\IUser;
@@ -57,9 +57,9 @@ class PublicKeyTokenMapperTest extends TestCase {
 		$this->mapper = new PublicKeyTokenMapper($this->dbConnection);
 	}
 
-	private function resetDatabase() {
+	private function resetDatabase(): void {
 		$qb = $this->dbConnection->getQueryBuilder();
-		$qb->delete('authtoken')->execute();
+		$qb->delete('authtoken')->executeStatement();
 		$qb->insert('authtoken')->values([
 			'uid' => $qb->createNamedParameter('user1'),
 			'login_name' => $qb->createNamedParameter('User1'),
@@ -72,7 +72,7 @@ class PublicKeyTokenMapperTest extends TestCase {
 			'public_key' => $qb->createNamedParameter('public key'),
 			'private_key' => $qb->createNamedParameter('private key'),
 			'version' => $qb->createNamedParameter(2),
-		])->execute();
+		])->executeStatement();
 		$qb->insert('authtoken')->values([
 			'uid' => $qb->createNamedParameter('user2'),
 			'login_name' => $qb->createNamedParameter('User2'),
@@ -85,7 +85,7 @@ class PublicKeyTokenMapperTest extends TestCase {
 			'public_key' => $qb->createNamedParameter('public key'),
 			'private_key' => $qb->createNamedParameter('private key'),
 			'version' => $qb->createNamedParameter(2),
-		])->execute();
+		])->executeStatement();
 		$qb->insert('authtoken')->values([
 			'uid' => $qb->createNamedParameter('user1'),
 			'login_name' => $qb->createNamedParameter('User1'),
@@ -98,7 +98,7 @@ class PublicKeyTokenMapperTest extends TestCase {
 			'public_key' => $qb->createNamedParameter('public key'),
 			'private_key' => $qb->createNamedParameter('private key'),
 			'version' => $qb->createNamedParameter(2),
-		])->execute();
+		])->executeStatement();
 		$qb->insert('authtoken')->values([
 			'uid' => $qb->createNamedParameter('user3'),
 			'login_name' => $qb->createNamedParameter('User3'),
@@ -112,7 +112,7 @@ class PublicKeyTokenMapperTest extends TestCase {
 			'private_key' => $qb->createNamedParameter('private key'),
 			'version' => $qb->createNamedParameter(2),
 			'password_invalid' => $qb->createNamedParameter(1),
-		])->execute();
+		])->executeStatement();
 		$qb->insert('authtoken')->values([
 			'uid' => $qb->createNamedParameter('user3'),
 			'login_name' => $qb->createNamedParameter('User3'),
@@ -126,19 +126,19 @@ class PublicKeyTokenMapperTest extends TestCase {
 			'private_key' => $qb->createNamedParameter('private key'),
 			'version' => $qb->createNamedParameter(2),
 			'password_invalid' => $qb->createNamedParameter(1),
-		])->execute();
+		])->executeStatement();
 	}
 
-	private function getNumberOfTokens() {
+	private function getNumberOfTokens(): int {
 		$qb = $this->dbConnection->getQueryBuilder();
 		$result = $qb->select($qb->func()->count('*', 'count'))
 			->from('authtoken')
-			->execute()
+			->executeQuery()
 			->fetch();
 		return (int) $result['count'];
 	}
 
-	public function testInvalidate() {
+	public function testInvalidate(): void {
 		$token = '9c5a2e661482b65597408a6bb6c4a3d1af36337381872ac56e445a06cdb7fea2b1039db707545c11027a4966919918b19d875a8b774840b18c6cbb7ae56fe206';
 
 		$this->mapper->invalidate($token);
@@ -146,7 +146,7 @@ class PublicKeyTokenMapperTest extends TestCase {
 		$this->assertSame(4, $this->getNumberOfTokens());
 	}
 
-	public function testInvalidateInvalid() {
+	public function testInvalidateInvalid(): void {
 		$token = 'youwontfindthisoneinthedatabase';
 
 		$this->mapper->invalidate($token);
@@ -154,23 +154,23 @@ class PublicKeyTokenMapperTest extends TestCase {
 		$this->assertSame(5, $this->getNumberOfTokens());
 	}
 
-	public function testInvalidateOld() {
+	public function testInvalidateOld(): void {
 		$olderThan = $this->time - 60 * 60; // One hour
 
-		$this->mapper->invalidateOld($olderThan);
+		$tokenList = $this->mapper->listOld($olderThan);
 
-		$this->assertSame(4, $this->getNumberOfTokens());
+		$this->assertSame(1, iterator_count($tokenList));
 	}
 
-	public function testInvalidateLastUsedBefore() {
+	public function testInvalidateLastUsedBefore(): void {
 		$before = $this->time - 60 * 2; // Two minutes
 
-		$this->mapper->invalidateLastUsedBefore('user3', $before);
+		$tokenList = $this->mapper->listLastUsedBefore('user3', $before);
 
-		$this->assertSame(4, $this->getNumberOfTokens());
+		$this->assertSame(1, iterator_count($tokenList));
 	}
 
-	public function testGetToken() {
+	public function testGetToken(): void {
 		$token = new PublicKeyToken();
 		$token->setUid('user2');
 		$token->setLoginName('User2');
@@ -194,7 +194,7 @@ class PublicKeyTokenMapperTest extends TestCase {
 	}
 
 
-	public function testGetInvalidToken() {
+	public function testGetInvalidToken(): void {
 		$this->expectException(\OCP\AppFramework\Db\DoesNotExistException::class);
 
 		$token = 'thisisaninvalidtokenthatisnotinthedatabase';
@@ -202,7 +202,7 @@ class PublicKeyTokenMapperTest extends TestCase {
 		$this->mapper->getToken($token);
 	}
 
-	public function testGetTokenById() {
+	public function testGetTokenById(): void {
 		$token = new PublicKeyToken();
 		$token->setUid('user2');
 		$token->setLoginName('User2');
@@ -226,14 +226,14 @@ class PublicKeyTokenMapperTest extends TestCase {
 	}
 
 
-	public function testGetTokenByIdNotFound() {
+	public function testGetTokenByIdNotFound(): void {
 		$this->expectException(\OCP\AppFramework\Db\DoesNotExistException::class);
 
 		$this->mapper->getTokenById(-1);
 	}
 
 
-	public function testGetInvalidTokenById() {
+	public function testGetInvalidTokenById(): void {
 		$this->expectException(\OCP\AppFramework\Db\DoesNotExistException::class);
 
 		$id = '42';
@@ -241,49 +241,40 @@ class PublicKeyTokenMapperTest extends TestCase {
 		$this->mapper->getToken($id);
 	}
 
-	public function testGetTokenByUser() {
+	public function testGetTokenByUser(): void {
 		$this->assertCount(2, $this->mapper->getTokenByUser('user1'));
 	}
 
-	public function testGetTokenByUserNotFound() {
+	public function testGetTokenByUserNotFound(): void {
 		$this->assertCount(0, $this->mapper->getTokenByUser('user1000'));
 	}
 
-	public function testDeleteById() {
+	public function testGetById(): void {
 		/** @var IUser|\PHPUnit\Framework\MockObject\MockObject $user */
 		$user = $this->createMock(IUser::class);
 		$qb = $this->dbConnection->getQueryBuilder();
 		$qb->select('id')
 			->from('authtoken')
 			->where($qb->expr()->eq('token', $qb->createNamedParameter('9c5a2e661482b65597408a6bb6c4a3d1af36337381872ac56e445a06cdb7fea2b1039db707545c11027a4966919918b19d875a8b774840b18c6cbb7ae56fe206')));
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$id = $result->fetch()['id'];
 
-		$this->mapper->deleteById('user1', (int)$id);
-		$this->assertEquals(4, $this->getNumberOfTokens());
+		$token = $this->mapper->getTokenById((int)$id);
+		$this->assertEquals('user1', $token->getUID());
 	}
 
-	public function testDeleteByIdWrongUser() {
-		/** @var IUser|\PHPUnit\Framework\MockObject\MockObject $user */
-		$user = $this->createMock(IUser::class);
-		$id = 33;
-
-		$this->mapper->deleteById('user1000', $id);
-		$this->assertEquals(5, $this->getNumberOfTokens());
-	}
-
-	public function testDeleteByName() {
+	public function testDeleteByName(): void {
 		$qb = $this->dbConnection->getQueryBuilder();
 		$qb->select('name')
 			->from('authtoken')
 			->where($qb->expr()->eq('token', $qb->createNamedParameter('9c5a2e661482b65597408a6bb6c4a3d1af36337381872ac56e445a06cdb7fea2b1039db707545c11027a4966919918b19d875a8b774840b18c6cbb7ae56fe206')));
-		$result = $qb->execute();
+		$result = $qb->executeQuery();
 		$name = $result->fetch()['name'];
 		$this->mapper->deleteByName($name);
 		$this->assertEquals(4, $this->getNumberOfTokens());
 	}
 
-	public function testHasExpiredTokens() {
+	public function testHasExpiredTokens(): void {
 		$this->assertFalse($this->mapper->hasExpiredTokens('user1'));
 		$this->assertTrue($this->mapper->hasExpiredTokens('user3'));
 	}

@@ -27,8 +27,10 @@ declare(strict_types=1);
  */
 namespace OC\Authentication\Token;
 
+use Generator;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Db\QBMapper;
+use OCP\Authentication\Token\IToken;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 
@@ -42,10 +44,8 @@ class PublicKeyTokenMapper extends QBMapper {
 
 	/**
 	 * Invalidate (delete) a given token
-	 *
-	 * @param string $token
 	 */
-	public function invalidate(string $token) {
+	public function invalidate(string $token): void {
 		/* @var $qb IQueryBuilder */
 		$qb = $this->db->getQueryBuilder();
 		$qb->delete($this->tableName)
@@ -55,27 +55,41 @@ class PublicKeyTokenMapper extends QBMapper {
 	}
 
 	/**
-	 * @param int $olderThan
-	 * @param int $remember
+	 * @return Generator<string> Tokens
 	 */
-	public function invalidateOld(int $olderThan, int $remember = IToken::DO_NOT_REMEMBER) {
+	public function listOld(int $olderThan, int $remember = IToken::DO_NOT_REMEMBER): Generator {
 		/* @var $qb IQueryBuilder */
 		$qb = $this->db->getQueryBuilder();
-		$qb->delete($this->tableName)
+		$result = $qb->select('token')
+			->from($this->tableName)
 			->where($qb->expr()->lt('last_activity', $qb->createNamedParameter($olderThan, IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->eq('type', $qb->createNamedParameter(IToken::TEMPORARY_TOKEN, IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->eq('remember', $qb->createNamedParameter($remember, IQueryBuilder::PARAM_INT)))
 			->andWhere($qb->expr()->eq('version', $qb->createNamedParameter(PublicKeyToken::VERSION, IQueryBuilder::PARAM_INT)))
-			->execute();
+			->executeQuery();
+
+		while ($tokenHash = $result->fetchOne()) {
+			yield $tokenHash;
+		}
+		$result->closeCursor();
 	}
 
-	public function invalidateLastUsedBefore(string $uid, int $before): int {
+	/**
+	 * @return Generator<string> Tokens
+	 */
+	public function listLastUsedBefore(string $uid, int $before): Generator {
 		$qb = $this->db->getQueryBuilder();
-		$qb->delete($this->tableName)
+		$result = $qb->select('token')
+			->from($this->tableName)
 			->where($qb->expr()->eq('uid', $qb->createNamedParameter($uid)))
 			->andWhere($qb->expr()->lt('last_activity', $qb->createNamedParameter($before, IQueryBuilder::PARAM_INT)))
-			->andWhere($qb->expr()->eq('version', $qb->createNamedParameter(PublicKeyToken::VERSION, IQueryBuilder::PARAM_INT)));
-		return $qb->executeStatement();
+			->andWhere($qb->expr()->eq('version', $qb->createNamedParameter(PublicKeyToken::VERSION, IQueryBuilder::PARAM_INT)))
+			->executeQuery();
+
+		while ($tokenHash = $result->fetchOne()) {
+			yield $tokenHash;
+		}
+		$result->closeCursor();
 	}
 
 	/**
@@ -150,14 +164,15 @@ class PublicKeyTokenMapper extends QBMapper {
 		return $entities;
 	}
 
-	public function deleteById(string $uid, int $id) {
+	public function getTokenByUserAndId(string $uid, int $id): ?string {
 		/* @var $qb IQueryBuilder */
 		$qb = $this->db->getQueryBuilder();
-		$qb->delete($this->tableName)
+		$qb->select('token')
+			->from($this->tableName)
 			->where($qb->expr()->eq('id', $qb->createNamedParameter($id)))
 			->andWhere($qb->expr()->eq('uid', $qb->createNamedParameter($uid)))
 			->andWhere($qb->expr()->eq('version', $qb->createNamedParameter(PublicKeyToken::VERSION, IQueryBuilder::PARAM_INT)));
-		$qb->execute();
+		return $qb->executeQuery()->fetchOne() ?: null;
 	}
 
 	/**
@@ -165,15 +180,15 @@ class PublicKeyTokenMapper extends QBMapper {
 	 *
 	 * @param string $name
 	 */
-	public function deleteByName(string $name) {
+	public function deleteByName(string $name): void {
 		$qb = $this->db->getQueryBuilder();
 		$qb->delete($this->tableName)
 			->where($qb->expr()->eq('name', $qb->createNamedParameter($name), IQueryBuilder::PARAM_STR))
 			->andWhere($qb->expr()->eq('version', $qb->createNamedParameter(PublicKeyToken::VERSION, IQueryBuilder::PARAM_INT)));
-		$qb->execute();
+		$qb->executeStatement();
 	}
 
-	public function deleteTempToken(PublicKeyToken $except) {
+	public function deleteTempToken(PublicKeyToken $except): void {
 		$qb = $this->db->getQueryBuilder();
 
 		$qb->delete($this->tableName)
@@ -182,7 +197,7 @@ class PublicKeyTokenMapper extends QBMapper {
 			->andWhere($qb->expr()->neq('id', $qb->createNamedParameter($except->getId())))
 			->andWhere($qb->expr()->eq('version', $qb->createNamedParameter(PublicKeyToken::VERSION, IQueryBuilder::PARAM_INT)));
 
-		$qb->execute();
+		$qb->executeStatement();
 	}
 
 	public function hasExpiredTokens(string $uid): bool {
