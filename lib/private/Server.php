@@ -1176,14 +1176,20 @@ class Server extends ServerContainer implements IServerContainer {
 			}
 
 			if ($classExists && $c->get(\OCP\IConfig::class)->getSystemValueBool('installed', false) && $c->get(IAppManager::class)->isInstalled('theming') && $c->getTrustedDomainHelper()->isTrustedDomain($c->getRequest()->getInsecureServerHost())) {
+				$backgroundService = new BackgroundService(
+					$c->get(IRootFolder::class),
+					$c->getAppDataDir('theming'),
+					$c->get(\OCP\IConfig::class),
+					$c->get(ISession::class)->get('user_id'),
+				);
 				$imageManager = new ImageManager(
 					$c->get(\OCP\IConfig::class),
 					$c->getAppDataDir('theming'),
 					$c->get(IURLGenerator::class),
-					$this->get(ICacheFactory::class),
-					$this->get(LoggerInterface::class),
-					$this->get(ITempManager::class),
-					$this->get(BackgroundService::class),
+					$c->get(ICacheFactory::class),
+					$c->get(LoggerInterface::class),
+					$c->get(ITempManager::class),
+					$backgroundService,
 				);
 				return new ThemingDefaults(
 					$c->get(\OCP\IConfig::class),
@@ -1195,7 +1201,7 @@ class Server extends ServerContainer implements IServerContainer {
 					$imageManager,
 					$c->get(IAppManager::class),
 					$c->get(INavigationManager::class),
-					$c->get(BackgroundService::class),
+					$backgroundService,
 				);
 			}
 			return new \OC_Defaults();
