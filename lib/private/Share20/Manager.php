@@ -1223,6 +1223,59 @@ class Manager implements IManager {
 		return $deletedShares;
 	}
 
+	protected function deleteReshare(IShare $share) {
+		if ($share->getNodeType() === 'folder' && $share->getShareType() === IShare::TYPE_USER) {
+			$sharesInFolder = $this->getSharesInFolder($share->getSharedWith(), $share->getNode());
+
+			foreach ($sharesInFolder as $nodeId => $shares) {
+				foreach ($shares as $child) {
+					$this->deleteShare($child);
+				}
+			}
+		}
+
+		$shareTypes = [
+			IShare::TYPE_GROUP,
+			IShare::TYPE_USER,
+			IShare::TYPE_LINK,
+			IShare::TYPE_REMOTE,
+			IShare::TYPE_EMAIL
+		];
+
+		if ($share->getShareType() === IShare::TYPE_USER || $share->getShareType() === IShare::TYPE_USERGROUP) {
+			foreach ($shareTypes as $shareType) {
+				$provider = $this->factory->getProviderForType($shareType);
+				$shares = $provider->getSharesBy($share->getSharedWith(), $shareType, $share->getNode(), false, -1, 0);
+				foreach ($shares as $child) {
+					$this->deleteShare($child);
+				}
+			}
+		}
+
+		if ($share->getShareType() === IShare::TYPE_GROUP) {
+			$group = $this->groupManager->get($share->getSharedWith());
+			$users = $group->getUsers();
+
+			foreach ($users as $user) {
+				$anotherShares = $this->getSharedWith($user->getUID(), IShare::TYPE_USER, $share->getNode(), -1, 0);
+				$groupShares = $this->getSharedWith($user->getUID(), IShare::TYPE_USERGROUP, $share->getNode(), -1, 0);
+
+				// If the user has another shares, we don't delete the shares by this user
+				if (count($anotherShares) != 0 || count($groupShares) > 1) {
+					continue;
+				}
+
+				foreach ($shareTypes as $shareType) {
+					$provider = $this->factory->getProviderForType($shareType);
+					$shares = $provider->getSharesBy($user->getUID(), $shareType, $share->getNode(), false, -1, 0);
+					foreach ($shares as $child) {
+						$this->deleteShare($child);
+					}
+				}
+			}
+		}
+	}
+
 	/**
 	 * Delete a share
 	 *
@@ -1238,6 +1291,9 @@ class Manager implements IManager {
 		}
 
 		$this->dispatcher->dispatchTyped(new BeforeShareDeletedEvent($share));
+
+		// Delete shares that shared by the "share with user/group"
+		$this->deleteReshare($share);
 
 		// Get all children and delete them as well
 		$this->deleteChildren($share);
