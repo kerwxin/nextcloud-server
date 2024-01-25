@@ -284,7 +284,7 @@ class AppConfigTest extends TestCase {
 	public function testGetValues(): void {
 		$config = $this->createAppConfig();
 
-		$sql = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+		$sql = $this->connection->getQueryBuilder();
 		$sql->select(['configkey', 'configvalue'])
 			->from('appconfig')
 			->where($sql->expr()->eq('appid', $sql->createParameter('appid')))
