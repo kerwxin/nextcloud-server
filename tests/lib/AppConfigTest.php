@@ -369,6 +369,33 @@ class AppConfigTest extends TestCase {
 		$this->assertEquals($secret, $actualSecret);
 	}
 
+	public function testMigratingNonSensitiveValueToSensitiveOne(): void {
+		$appConfig = $this->createAppConfig();
+		$secret = sha1(time());
+
+		// Unencrypted
+		$appConfig->setValueString('testapp', 'migrating-secret', $secret);
+		$this->assertConfigKey('testapp', 'migrating-secret', $secret);
+
+		// Can get freshly decrypted from DB
+		$newAppConfig = $this->createAppConfig();
+		$actualSecret = $newAppConfig->getValueString('testapp', 'migrating-secret');
+		$this->assertEquals($secret, $actualSecret);
+
+		// Encrypting on change
+		$appConfig->setValueString('testapp', 'migrating-secret', $secret, sensitive: true);
+		$this->assertConfigValueNotEquals('testapp', 'migrating-secret', $secret);
+
+		// Can get in same run
+		$actualSecret = $appConfig->getValueString('testapp', 'migrating-secret');
+		$this->assertEquals($secret, $actualSecret);
+
+		// Can get freshly decrypted from DB
+		$newAppConfig = $this->createAppConfig();
+		$actualSecret = $newAppConfig->getValueString('testapp', 'migrating-secret');
+		$this->assertEquals($secret, $actualSecret);
+	}
+
 	protected function assertConfigKey(string $app, string $key, string $expected): void {
 		$sql = $this->connection->getQueryBuilder();
 		$sql->select('configvalue')
