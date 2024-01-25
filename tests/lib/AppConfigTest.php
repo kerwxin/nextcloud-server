@@ -12,6 +12,7 @@ namespace Test;
 use OC\AppConfig;
 use OCP\IConfig;
 use OCP\IDBConnection;
+use OCP\Security\ICrypto;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -33,21 +34,20 @@ class AppConfigTest extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		$this->connection = \OC::$server->get(IDBConnection::class);
-		$this->logger = \OC::$server->get(LoggerInterface::class);
+		$this->connection = \OCP\Server::get(IDBConnection::class);
+		$this->logger = \OCP\Server::get(LoggerInterface::class);
+		$this->crypto = \OCP\Server::get(ICrypto::class);
 
 		$sql = $this->connection->getQueryBuilder();
 		$sql->select('*')
 			->from('appconfig');
-		$result = $sql->execute();
+		$result = $sql->executeQuery();
 		$this->originalConfig = $result->fetchAll();
 		$result->closeCursor();
 
 		$sql = $this->connection->getQueryBuilder();
 		$sql->delete('appconfig');
-		$sql->execute();
-
-		$this->overwriteService(AppConfig::class, new \OC\AppConfig($this->connection, $this->logger));
+		$sql->executeStatement();
 
 		$sql = $this->connection->getQueryBuilder();
 		$sql->insert('appconfig')
@@ -61,66 +61,66 @@ class AppConfigTest extends TestCase {
 			'appid' => 'testapp',
 			'configkey' => 'enabled',
 			'configvalue' => 'true'
-		])->execute();
+		])->executeStatement();
 		$sql->setParameters([
 			'appid' => 'testapp',
 			'configkey' => 'installed_version',
 			'configvalue' => '1.2.3',
-		])->execute();
+		])->executeStatement();
 		$sql->setParameters([
 			'appid' => 'testapp',
 			'configkey' => 'depends_on',
 			'configvalue' => 'someapp',
-		])->execute();
+		])->executeStatement();
 		$sql->setParameters([
 			'appid' => 'testapp',
 			'configkey' => 'deletethis',
 			'configvalue' => 'deletethis',
-		])->execute();
+		])->executeStatement();
 		$sql->setParameters([
 			'appid' => 'testapp',
 			'configkey' => 'key',
 			'configvalue' => 'value',
-		])->execute();
+		])->executeStatement();
 
 		$sql->setParameters([
 			'appid' => 'someapp',
 			'configkey' => 'key',
 			'configvalue' => 'value',
-		])->execute();
+		])->executeStatement();
 		$sql->setParameters([
 			'appid' => 'someapp',
 			'configkey' => 'otherkey',
 			'configvalue' => 'othervalue',
-		])->execute();
+		])->executeStatement();
 
 		$sql->setParameters([
 			'appid' => '123456',
 			'configkey' => 'key',
 			'configvalue' => 'value',
-		])->execute();
+		])->executeStatement();
 		$sql->setParameters([
 			'appid' => '123456',
 			'configkey' => 'enabled',
 			'configvalue' => 'false',
-		])->execute();
+		])->executeStatement();
 
 		$sql->setParameters([
 			'appid' => 'anotherapp',
 			'configkey' => 'key',
 			'configvalue' => 'value',
-		])->execute();
+		])->executeStatement();
 		$sql->setParameters([
 			'appid' => 'anotherapp',
 			'configkey' => 'enabled',
 			'configvalue' => 'false',
-		])->execute();
+		])->executeStatement();
 	}
 
 	protected function tearDown(): void {
 		$sql = $this->connection->getQueryBuilder();
 		$sql->delete('appconfig');
-		$sql->execute();
+		$sql->executeStatement();
 
 		$sql = $this->connection->getQueryBuilder();
 		$sql->insert('appconfig')
@@ -138,15 +138,22 @@ class AppConfigTest extends TestCase {
 				->setParameter('configvalue', $configs['configvalue'])
 				->setParameter('lazy', ($configs['lazy'] === '1') ? '1' : '0')
 				->setParameter('type', $configs['type']);
-			$sql->execute();
+			$sql->executeStatement();
 		}
 
 		$this->restoreService(AppConfig::class);
 		parent::tearDown();
 	}
 
-	public function testGetApps() {
-		$config = new \OC\AppConfig(\OC::$server->get(IDBConnection::class), \OC::$server->get(LoggerInterface::class));
+	protected function createAppConfig(): AppConfig {
+		return new AppConfig(
+			$this->connection,
+			$this->logger,
+		);
+	}
+
+	public function testGetApps(): void {
+		$config = $this->createAppConfig();
 
 		$this->assertEqualsCanonicalizing([
 			'anotherapp',
@@ -156,8 +163,8 @@ class AppConfigTest extends TestCase {
 		], $config->getApps());
 	}
 
-	public function testGetKeys() {
-		$config = new \OC\AppConfig(\OC::$server->get(IDBConnection::class), \OC::$server->get(LoggerInterface::class));
+	public function testGetKeys(): void {
+		$config = $this->createAppConfig();
 
 		$keys = $config->getKeys('testapp');
 		$this->assertEqualsCanonicalizing([
@@ -169,8 +176,8 @@ class AppConfigTest extends TestCase {
 		], $keys);
 	}
 
-	public function testGetValue() {
-		$config = new \OC\AppConfig(\OC::$server->get(IDBConnection::class), \OC::$server->get(LoggerInterface::class));
+	public function testGetValue(): void {
+		$config = $this->createAppConfig();
 
 		$value = $config->getValue('testapp', 'installed_version');
 		$this->assertConfigKey('testapp', 'installed_version', $value);
@@ -182,22 +189,22 @@ class AppConfigTest extends TestCase {
 		$this->assertEquals('default', $value);
 	}
 
-	public function testHasKey() {
-		$config = new \OC\AppConfig(\OC::$server->get(IDBConnection::class), \OC::$server->get(LoggerInterface::class));
+	public function testHasKey(): void {
+		$config = $this->createAppConfig();
 
 		$this->assertTrue($config->hasKey('testapp', 'installed_version'));
 		$this->assertFalse($config->hasKey('testapp', 'nonexistant'));
 		$this->assertFalse($config->hasKey('nonexistant', 'nonexistant'));
 	}
 
-	public function testSetValueUpdate() {
-		$config = new \OC\AppConfig(\OC::$server->get(IDBConnection::class), \OC::$server->get(LoggerInterface::class));
+	public function testSetValueUpdate(): void {
+		$config = $this->createAppConfig();
 
 		$this->assertEquals('1.2.3', $config->getValue('testapp', 'installed_version'));
 		$this->assertConfigKey('testapp', 'installed_version', '1.2.3');
 
 		$wasModified = $config->setValue('testapp', 'installed_version', '1.2.3');
-		if (!(\OC::$server->get(IDBConnection::class) instanceof \OC\DB\OracleConnection)) {
+		if (!$this->connection instanceof \OC\DB\OracleConnection) {
 			$this->assertFalse($wasModified);
 		}
 
@@ -214,8 +221,8 @@ class AppConfigTest extends TestCase {
 		$this->assertConfigKey('someapp', 'somekey', 'somevalue');
 	}
 
-	public function testSetValueInsert() {
-		$config = new \OC\AppConfig(\OC::$server->get(IDBConnection::class), \OC::$server->get(LoggerInterface::class));
+	public function testSetValueInsert(): void {
+		$config = $this->createAppConfig();
 
 		$this->assertFalse($config->hasKey('someapp', 'somekey'));
 		$this->assertNull($config->getValue('someapp', 'somekey'));
@@ -227,13 +234,13 @@ class AppConfigTest extends TestCase {
 		$this->assertConfigKey('someapp', 'somekey', 'somevalue');
 
 		$wasInserted = $config->setValue('someapp', 'somekey', 'somevalue');
-		if (!(\OC::$server->get(IDBConnection::class) instanceof \OC\DB\OracleConnection)) {
+		if (!$this->connection instanceof \OC\DB\OracleConnection) {
 			$this->assertFalse($wasInserted);
 		}
 	}
 
-	public function testDeleteKey() {
-		$config = new \OC\AppConfig(\OC::$server->get(IDBConnection::class), \OC::$server->get(LoggerInterface::class));
+	public function testDeleteKey(): void {
+		$config = $this->createAppConfig();
 
 		$this->assertTrue($config->hasKey('testapp', 'deletethis'));
 
@@ -241,21 +248,21 @@ class AppConfigTest extends TestCase {
 
 		$this->assertFalse($config->hasKey('testapp', 'deletethis'));
 
-		$sql = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+		$sql = $this->connection->getQueryBuilder();
 		$sql->select('configvalue')
 			->from('appconfig')
 			->where($sql->expr()->eq('appid', $sql->createParameter('appid')))
 			->andWhere($sql->expr()->eq('configkey', $sql->createParameter('configkey')))
 			->setParameter('appid', 'testapp')
 			->setParameter('configkey', 'deletethis');
-		$query = $sql->execute();
+		$query = $sql->executeQuery();
 		$result = $query->fetch();
 		$query->closeCursor();
 		$this->assertFalse($result);
 	}
 
-	public function testDeleteApp() {
-		$config = new \OC\AppConfig(\OC::$server->get(IDBConnection::class), \OC::$server->get(LoggerInterface::class));
+	public function testDeleteApp(): void {
+		$config = $this->createAppConfig();
 
 		$this->assertTrue($config->hasKey('someapp', 'otherkey'));
 
@@ -263,34 +270,34 @@ class AppConfigTest extends TestCase {
 
 		$this->assertFalse($config->hasKey('someapp', 'otherkey'));
 
-		$sql = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+		$sql = $this->connection->getQueryBuilder();
 		$sql->select('configvalue')
 			->from('appconfig')
 			->where($sql->expr()->eq('appid', $sql->createParameter('appid')))
 			->setParameter('appid', 'someapp');
-		$query = $sql->execute();
+		$query = $sql->executeQuery();
 		$result = $query->fetch();
 		$query->closeCursor();
 		$this->assertFalse($result);
 	}
 
-	public function testGetValuesNotAllowed() {
-		$config = new \OC\AppConfig(\OC::$server->get(IDBConnection::class), \OC::$server->get(LoggerInterface::class));
+	public function testGetValuesNotAllowed(): void {
+		$config = $this->createAppConfig();
 
 		$this->assertFalse($config->getValues('testapp', 'enabled'));
 
 		$this->assertFalse($config->getValues(false, false));
 	}
 
-	public function testGetValues() {
-		$config = new \OC\AppConfig(\OC::$server->get(IDBConnection::class), \OC::$server->get(LoggerInterface::class));
+	public function testGetValues(): void {
+		$config = $this->createAppConfig();
 
 		$sql = \OC::$server->getDatabaseConnection()->getQueryBuilder();
 		$sql->select(['configkey', 'configvalue'])
 			->from('appconfig')
 			->where($sql->expr()->eq('appid', $sql->createParameter('appid')))
 			->setParameter('appid', 'testapp');
-		$query = $sql->execute();
+		$query = $sql->executeQuery();
 		$expected = [];
 		while ($row = $query->fetch()) {
 			$expected[$row['configkey']] = $row['configvalue'];
@@ -300,12 +307,12 @@ class AppConfigTest extends TestCase {
 		$values = $config->getValues('testapp', false);
 		$this->assertEquals($expected, $values);
 
-		$sql = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+		$sql = $this->connection->getQueryBuilder();
 		$sql->select(['appid', 'configvalue'])
 			->from('appconfig')
 			->where($sql->expr()->eq('configkey', $sql->createParameter('configkey')))
 			->setParameter('configkey', 'enabled');
-		$query = $sql->execute();
+		$query = $sql->executeQuery();
 		$expected = [];
 		while ($row = $query->fetch()) {
 			$expected[$row['appid']] = $row['configvalue'];
@@ -316,8 +323,8 @@ class AppConfigTest extends TestCase {
 		$this->assertEquals($expected, $values);
 	}
 
-	public function testGetFilteredValues() {
-		$config = new \OC\AppConfig(\OC::$server->get(IDBConnection::class), \OC::$server->get(LoggerInterface::class));
+	public function testGetFilteredValues(): void {
+		$config = $this->createAppConfig();
 		$config->setValue('user_ldap', 'ldap_agent_password', 'secret');
 		$config->setValue('user_ldap', 's42ldap_agent_password', 'secret');
 		$config->setValue('user_ldap', 'ldap_dn', 'dn');
@@ -330,9 +337,9 @@ class AppConfigTest extends TestCase {
 		], $values);
 	}
 
-	public function testSettingConfigParallel() {
-		$appConfig1 = new \OC\AppConfig(\OC::$server->get(IDBConnection::class), \OC::$server->get(LoggerInterface::class));
-		$appConfig2 = new \OC\AppConfig(\OC::$server->get(IDBConnection::class), \OC::$server->get(LoggerInterface::class));
+	public function testSettingConfigParallel(): void {
+		$appConfig1 = $this->createAppConfig();
+		$appConfig2 = $this->createAppConfig();
 		$appConfig1->getValue('testapp', 'foo', 'v1');
 		$appConfig2->getValue('testapp', 'foo', 'v1');
 
@@ -343,20 +350,15 @@ class AppConfigTest extends TestCase {
 		$this->assertConfigKey('testapp', 'foo', 'v2');
 	}
 
-	/**
-	 * @param string $app
-	 * @param string $key
-	 * @param string $expected
-	 */
-	protected function assertConfigKey($app, $key, $expected) {
-		$sql = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+	protected function assertConfigKey(string $app, string $key, string $expected): void {
+		$sql = $this->connection->getQueryBuilder();
 		$sql->select('configvalue')
 			->from('appconfig')
 			->where($sql->expr()->eq('appid', $sql->createParameter('appid')))
 			->andWhere($sql->expr()->eq('configkey', $sql->createParameter('configkey')))
 			->setParameter('appid', $app)
 			->setParameter('configkey', $key);
-		$query = $sql->execute();
+		$query = $sql->executeQuery();
 		$actual = $query->fetch();
 		$query->closeCursor();
 
