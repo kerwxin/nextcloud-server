@@ -46,6 +46,7 @@ use OCP\Exceptions\AppConfigUnknownKeyException;
 use OCP\IAppConfig;
 use OCP\IConfig;
 use OCP\IDBConnection;
+use OCP\Security\ICrypto;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -92,7 +93,8 @@ class AppConfig implements IAppConfig {
 
 	public function __construct(
 		protected IDBConnection $connection,
-		private LoggerInterface $logger,
+		protected LoggerInterface $logger,
+		protected ICrypto $crypto,
 	) {
 	}
 
@@ -462,11 +464,24 @@ class AppConfig implements IAppConfig {
 			throw new AppConfigTypeConflictException('conflict with value type from database');
 		}
 
-		if ($lazy) {
-			return $this->lazyCache[$app][$key] ?? $default;
+		if ($lazy && isset($this->lazyCache[$app][$key])) {
+			$value = $this->lazyCache[$app][$key];
+		} elseif (!$lazy && isset($this->fastCache[$app][$key])) {
+			$value = $this->fastCache[$app][$key];
+		} else {
+			return $default;
 		}
 
-		return $this->fastCache[$app][$key] ?? $default;
+		$sensitive = $this->isTyped(self::VALUE_SENSITIVE, $knownType);
+		if ($sensitive) {
+			// Only decrypt values that are stored encrypted
+			$sections = substr_count($value, '|');
+			if ($sections === 2 || $sections === 3) {
+				$value = $this->crypto->decrypt($value);
+			}
+		}
+
+		return $value;
 	}
 
 	/**
@@ -728,10 +743,15 @@ class AppConfig implements IAppConfig {
 		 * no update if key is already known with set lazy status, or value is
 		 * different, or sensitivity switched from false to true.
 		 */
-		if ($this->hasKey($app, $key, $lazy)
+		if (!$sensitive
+			&& $this->hasKey($app, $key, $lazy)
 			&& $value === $this->getTypedValue($app, $key, $value, $lazy, $type)
-			&& (!$sensitive || $this->isSensitive($app, $key, $lazy))) {
+			&& !$this->isSensitive($app, $key, $lazy)) {
 			return false;
+		}
+
+		if ($sensitive) {
+			$value = $this->crypto->encrypt($value);
 		}
 
 		$refreshCache = false;

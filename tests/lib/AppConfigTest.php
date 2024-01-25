@@ -28,6 +28,7 @@ class AppConfigTest extends TestCase {
 
 	protected IDBConnection $connection;
 	private LoggerInterface $logger;
+	private ICrypto $crypto;
 
 	protected $originalConfig;
 
@@ -149,6 +150,7 @@ class AppConfigTest extends TestCase {
 		return new AppConfig(
 			$this->connection,
 			$this->logger,
+			$this->crypto,
 		);
 	}
 
@@ -350,6 +352,23 @@ class AppConfigTest extends TestCase {
 		$this->assertConfigKey('testapp', 'foo', 'v2');
 	}
 
+	public function testSensitiveValuesAreEncrypted(): void {
+		$appConfig = $this->createAppConfig();
+		$secret = md5(time());
+		$appConfig->setValueString('testapp', 'secret', $secret, sensitive: true);
+
+		$this->assertConfigValueNotEquals('testapp', 'secret', $secret);
+
+		// Can get in same run
+		$actualSecret = $appConfig->getValueString('testapp', 'secret');
+		$this->assertEquals($secret, $actualSecret);
+
+		// Can get freshly decrypted from DB
+		$newAppConfig = $this->createAppConfig();
+		$actualSecret = $newAppConfig->getValueString('testapp', 'secret');
+		$this->assertEquals($secret, $actualSecret);
+	}
+
 	protected function assertConfigKey(string $app, string $key, string $expected): void {
 		$sql = $this->connection->getQueryBuilder();
 		$sql->select('configvalue')
@@ -363,5 +382,20 @@ class AppConfigTest extends TestCase {
 		$query->closeCursor();
 
 		$this->assertEquals($expected, $actual['configvalue']);
+	}
+
+	protected function assertConfigValueNotEquals(string $app, string $key, string $expected): void {
+		$sql = $this->connection->getQueryBuilder();
+		$sql->select('configvalue')
+			->from('appconfig')
+			->where($sql->expr()->eq('appid', $sql->createParameter('appid')))
+			->andWhere($sql->expr()->eq('configkey', $sql->createParameter('configkey')))
+			->setParameter('appid', $app)
+			->setParameter('configkey', $key);
+		$query = $sql->executeQuery();
+		$actual = $query->fetch();
+		$query->closeCursor();
+
+		$this->assertNotEquals($expected, $actual['configvalue']);
 	}
 }
