@@ -250,17 +250,7 @@ class AppConfigTest extends TestCase {
 
 		$this->assertFalse($config->hasKey('testapp', 'deletethis'));
 
-		$sql = $this->connection->getQueryBuilder();
-		$sql->select('configvalue')
-			->from('appconfig')
-			->where($sql->expr()->eq('appid', $sql->createParameter('appid')))
-			->andWhere($sql->expr()->eq('configkey', $sql->createParameter('configkey')))
-			->setParameter('appid', 'testapp')
-			->setParameter('configkey', 'deletethis');
-		$query = $sql->executeQuery();
-		$result = $query->fetch();
-		$query->closeCursor();
-		$this->assertFalse($result);
+		$this->assertFalse($this->loadConfigValueFromDatabase('testapp', 'deletethis'));
 	}
 
 	public function testDeleteApp(): void {
@@ -396,7 +386,7 @@ class AppConfigTest extends TestCase {
 		$this->assertEquals($secret, $actualSecret);
 	}
 
-	protected function assertConfigKey(string $app, string $key, string $expected): void {
+	protected function loadConfigValueFromDatabase(string $app, string $key): string|false {
 		$sql = $this->connection->getQueryBuilder();
 		$sql->select('configvalue')
 			->from('appconfig')
@@ -405,24 +395,17 @@ class AppConfigTest extends TestCase {
 			->setParameter('appid', $app)
 			->setParameter('configkey', $key);
 		$query = $sql->executeQuery();
-		$actual = $query->fetch();
+		$actual = $query->fetchOne();
 		$query->closeCursor();
 
-		$this->assertEquals($expected, $actual['configvalue']);
+		return $actual;
 	}
 
-	protected function assertConfigValueNotEquals(string $app, string $key, string $expected): void {
-		$sql = $this->connection->getQueryBuilder();
-		$sql->select('configvalue')
-			->from('appconfig')
-			->where($sql->expr()->eq('appid', $sql->createParameter('appid')))
-			->andWhere($sql->expr()->eq('configkey', $sql->createParameter('configkey')))
-			->setParameter('appid', $app)
-			->setParameter('configkey', $key);
-		$query = $sql->executeQuery();
-		$actual = $query->fetch();
-		$query->closeCursor();
+	protected function assertConfigKey(string $app, string $key, string|false $expected): void {
+		$this->assertEquals($expected, $this->loadConfigValueFromDatabase($app, $key));
+	}
 
-		$this->assertNotEquals($expected, $actual['configvalue']);
+	protected function assertConfigValueNotEquals(string $app, string $key, string|false $expected): void {
+		$this->assertNotEquals($expected, $this->loadConfigValueFromDatabase($app, $key));
 	}
 }

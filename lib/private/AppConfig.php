@@ -71,6 +71,8 @@ use Psr\Log\LoggerInterface;
 class AppConfig implements IAppConfig {
 	private const APP_MAX_LENGTH = 32;
 	private const KEY_MAX_LENGTH = 64;
+	private const ENCRYPTION_PREFIX = '$AppConfigEncryption$';
+	private const ENCRYPTION_PREFIX_LENGTH = 21; // strlen(self::ENCRYPTION_PREFIX)
 
 	/** @var array<string, array<string, mixed>> ['app_id' => ['config_key' => 'config_value']] */
 	private array $fastCache = [];   // cache for normal config keys
@@ -473,12 +475,9 @@ class AppConfig implements IAppConfig {
 		}
 
 		$sensitive = $this->isTyped(self::VALUE_SENSITIVE, $knownType);
-		if ($sensitive) {
+		if ($sensitive && str_starts_with($value, self::ENCRYPTION_PREFIX)) {
 			// Only decrypt values that are stored encrypted
-			$sections = substr_count($value, '|');
-			if ($sections === 2 || $sections === 3) {
-				$value = $this->crypto->decrypt($value);
-			}
+			$value = $this->crypto->decrypt(substr($value, self::ENCRYPTION_PREFIX_LENGTH));
 		}
 
 		return $value;
@@ -751,7 +750,7 @@ class AppConfig implements IAppConfig {
 		}
 
 		if ($sensitive) {
-			$value = $this->crypto->encrypt($value);
+			$value = self::ENCRYPTION_PREFIX . $this->crypto->encrypt($value);
 		}
 
 		$refreshCache = false;
