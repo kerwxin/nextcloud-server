@@ -905,18 +905,34 @@ class AppConfig implements IAppConfig {
 			return false;
 		}
 
+		$lazy = $this->isLazy($app, $key);
+		if ($lazy) {
+			$cache = $this->lazyCache;
+		} else {
+			$cache = $this->fastCache;
+		}
+
+		if (!isset($cache[$app][$key])) {
+			throw new AppConfigUnknownKeyException('unknown config key');
+		}
+
 		/**
 		 * type returned by getValueType() is already cleaned from sensitive flag
 		 * we just need to update it based on $sensitive and store it in database
 		 */
 		$type = $this->getValueType($app, $key);
+		$value = $cache[$app][$key];
 		if ($sensitive) {
 			$type = $type | self::VALUE_SENSITIVE;
+			$value = self::ENCRYPTION_PREFIX . $this->crypto->encrypt($value);
+		} else {
+			$value = $this->crypto->decrypt(substr($value, self::ENCRYPTION_PREFIX_LENGTH));
 		}
 
 		$update = $this->connection->getQueryBuilder();
 		$update->update('appconfig')
 			   ->set('type', $update->createNamedParameter($type, IQueryBuilder::PARAM_INT))
+			   ->set('configvalue', $update->createNamedParameter($value))
 			   ->where($update->expr()->eq('appid', $update->createNamedParameter($app)))
 			   ->andWhere($update->expr()->eq('configkey', $update->createNamedParameter($key)));
 		$update->executeStatement();

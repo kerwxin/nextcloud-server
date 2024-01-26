@@ -343,47 +343,78 @@ class AppConfigTest extends TestCase {
 	}
 
 	public function testSensitiveValuesAreEncrypted(): void {
+		$key = self::getUniqueID('secret');
+
 		$appConfig = $this->createAppConfig();
 		$secret = md5(time());
-		$appConfig->setValueString('testapp', 'secret', $secret, sensitive: true);
+		$appConfig->setValueString('testapp', $key, $secret, sensitive: true);
 
-		$this->assertConfigValueNotEquals('testapp', 'secret', $secret);
+		$this->assertConfigValueNotEquals('testapp', $key, $secret);
 
 		// Can get in same run
-		$actualSecret = $appConfig->getValueString('testapp', 'secret');
+		$actualSecret = $appConfig->getValueString('testapp', $key);
 		$this->assertEquals($secret, $actualSecret);
 
 		// Can get freshly decrypted from DB
 		$newAppConfig = $this->createAppConfig();
-		$actualSecret = $newAppConfig->getValueString('testapp', 'secret');
+		$actualSecret = $newAppConfig->getValueString('testapp', $key);
 		$this->assertEquals($secret, $actualSecret);
 	}
 
-	public function testMigratingNonSensitiveValueToSensitiveOne(): void {
+	public function testMigratingNonSensitiveValueToSensitiveWithSetValue(): void {
+		$key = self::getUniqueID('secret');
 		$appConfig = $this->createAppConfig();
 		$secret = sha1(time());
 
 		// Unencrypted
-		$appConfig->setValueString('testapp', 'migrating-secret', $secret);
-		$this->assertConfigKey('testapp', 'migrating-secret', $secret);
+		$appConfig->setValueString('testapp', $key, $secret);
+		$this->assertConfigKey('testapp', $key, $secret);
 
 		// Can get freshly decrypted from DB
 		$newAppConfig = $this->createAppConfig();
-		$actualSecret = $newAppConfig->getValueString('testapp', 'migrating-secret');
+		$actualSecret = $newAppConfig->getValueString('testapp', $key);
 		$this->assertEquals($secret, $actualSecret);
 
 		// Encrypting on change
-		$appConfig->setValueString('testapp', 'migrating-secret', $secret, sensitive: true);
-		$this->assertConfigValueNotEquals('testapp', 'migrating-secret', $secret);
+		$appConfig->setValueString('testapp', $key, $secret, sensitive: true);
+		$this->assertConfigValueNotEquals('testapp', $key, $secret);
 
 		// Can get in same run
-		$actualSecret = $appConfig->getValueString('testapp', 'migrating-secret');
+		$actualSecret = $appConfig->getValueString('testapp', $key);
 		$this->assertEquals($secret, $actualSecret);
 
 		// Can get freshly decrypted from DB
 		$newAppConfig = $this->createAppConfig();
-		$actualSecret = $newAppConfig->getValueString('testapp', 'migrating-secret');
+		$actualSecret = $newAppConfig->getValueString('testapp', $key);
 		$this->assertEquals($secret, $actualSecret);
+	}
+
+	public function testUpdateSensitiveValueToNonSensitiveWithUpdateSensitive(): void {
+		$key = self::getUniqueID('secret');
+		$appConfig = $this->createAppConfig();
+		$secret = sha1(time());
+
+		// Encrypted
+		$appConfig->setValueString('testapp', $key, $secret, sensitive: true);
+		$this->assertConfigValueNotEquals('testapp', $key, $secret);
+
+		// Migrate to non-sensitive / non-encrypted
+		$appConfig->updateSensitive('testapp', $key, false);
+		$this->assertConfigKey('testapp', $key, $secret);
+	}
+
+	public function testUpdateNonSensitiveValueToSensitiveWithUpdateSensitive(): void {
+		$key = self::getUniqueID('secret');
+		$appConfig = $this->createAppConfig();
+		$secret = sha1(time());
+
+		// Unencrypted
+		$appConfig->setValueString('testapp', $key, $secret);
+		$this->assertConfigKey('testapp', $key, $secret);
+
+		// Migrate to sensitive / encrypted
+		$appConfig->updateSensitive('testapp', $key, true);
+		$this->assertConfigValueNotEquals('testapp', $key, $secret);
 	}
 
 	protected function loadConfigValueFromDatabase(string $app, string $key): string|false {
