@@ -26,6 +26,7 @@ import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import Vue from 'vue'
 
 import UnifiedSearch from './views/UnifiedSearch.vue'
+import store from '../src/store/index.js'
 
 // eslint-disable-next-line camelcase
 __webpack_nonce__ = btoa(getRequestToken())
@@ -47,9 +48,24 @@ Vue.mixin({
 	},
 })
 
+// Register the add/register filter action API globally
+window.OCP = window.OCP || {}
+window.OCP.UnifiedSearch = {
+	registerFilterAction: ({ id, name, label, callback, icon }) => {
+		store.dispatch('registerExternalFilter', {
+			id,
+			name,
+			label,
+			icon,
+			callback,
+		})
+	},
+}
+
 export default new Vue({
 	el: '#unified-search',
 	// eslint-disable-next-line vue/match-component-file-name
 	name: 'UnifiedSearchRoot',
+	store,
 	render: h => h(UnifiedSearch),
 })
