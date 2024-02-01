@@ -215,7 +215,7 @@ class AppConfig implements IAppConfig {
 		// if we want to filter values, we need to get sensitivity
 		$this->loadConfigAll();
 		// array_merge() will remove numeric keys (here config keys), so addition arrays instead
-		$values = ($this->fastCache[$app] ?? []) + ($this->lazyCache[$app] ?? []);
+		$values = $this->formatAppValues($app, ($this->fastCache[$app] ?? []) + ($this->lazyCache[$app] ?? []));
 
 		if (!$filtered) {
 			return $values;
@@ -262,7 +262,8 @@ class AppConfig implements IAppConfig {
 
 		foreach (array_keys($cache) as $app) {
 			if (isset($cache[$app][$key])) {
-				$values[$app] = $cache[$app][$key];
+				$appCache = $this->formatAppValues((string)$app, $cache[$app]);
+				$values[$app] = $appCache[$key];
 			}
 		}
 
@@ -1296,7 +1297,7 @@ class AppConfig implements IAppConfig {
 	 * @param string|false $key
 	 *
 	 * @return array|false
-	 * @deprecated 29.0.0 use getAllValues()
+	 * @deprecated 29.0.0 use {@see getAllValues()}
 	 */
 	public function getValues($app, $key) {
 		if (($app !== false) === ($key !== false)) {
@@ -1317,10 +1318,43 @@ class AppConfig implements IAppConfig {
 	 * @param string $app
 	 *
 	 * @return array
-	 * @deprecated 29.0.0 use getAllValues()
+	 * @deprecated 29.0.0 use {@see getAllValues()}
 	 */
 	public function getFilteredValues($app) {
 		return $this->getAllValues($app, filtered: true);
+	}
+
+
+	/**
+	 * @param string $app
+	 * @param array $values
+	 *
+	 * @return array
+	 * @throws AppConfigUnknownKeyException
+	 */
+	private function formatAppValues(string $app, array $values): array {
+		foreach($values as $key => $value) {
+			switch ($this->getValueType($app, $key)) {
+				case self::VALUE_INT:
+					$values[$key] = (int)$value;
+					break;
+				case self::VALUE_FLOAT:
+					$values[$key] = (float)$value;
+					break;
+				case self::VALUE_BOOL:
+					$values[$key] = in_array(strtolower($value), ['1', 'true', 'yes', 'on']);
+					break;
+				case self::VALUE_ARRAY:
+					try {
+						$values[$key] = json_decode($value, true, flags: JSON_THROW_ON_ERROR);
+					} catch (JsonException $e) {
+						// ignoreable
+					}
+					break;
+			}
+		}
+
+		return $values;
 	}
 
 	/**
