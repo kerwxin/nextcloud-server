@@ -1224,8 +1224,18 @@ class Manager implements IManager {
 	}
 
 	protected function deleteReshare(IShare $share) {
+		// If the user has another shares, we don't delete the shares by this user
+		if ($share->getShareType() === IShare::TYPE_USER) {
+			$groupShares = $this->getSharedWith($share->getSharedWith(), IShare::TYPE_GROUP, $share->getNode(), -1, 0);
+
+			if (count($groupShares) !== 0) {
+				return;
+			}
+		}
+
+		// Delete re-share records (shared by "share with user") inside folder
 		if ($share->getNodeType() === 'folder' && $share->getShareType() === IShare::TYPE_USER) {
-			$sharesInFolder = $this->getSharesInFolder($share->getSharedWith(), $share->getNode());
+			$sharesInFolder = $this->getSharesInFolder($share->getSharedWith(), $share->getNode(), true, false);
 
 			foreach ($sharesInFolder as $nodeId => $shares) {
 				foreach ($shares as $child) {
@@ -1242,6 +1252,7 @@ class Manager implements IManager {
 			IShare::TYPE_EMAIL
 		];
 
+		// Delete re-share records which shared by "share with user"
 		if ($share->getShareType() === IShare::TYPE_USER || $share->getShareType() === IShare::TYPE_USERGROUP) {
 			foreach ($shareTypes as $shareType) {
 				$provider = $this->factory->getProviderForType($shareType);
@@ -1252,16 +1263,17 @@ class Manager implements IManager {
 			}
 		}
 
+		// Delete re-share records which shared by users in "share with group"
 		if ($share->getShareType() === IShare::TYPE_GROUP) {
 			$group = $this->groupManager->get($share->getSharedWith());
 			$users = $group->getUsers();
 
 			foreach ($users as $user) {
 				$anotherShares = $this->getSharedWith($user->getUID(), IShare::TYPE_USER, $share->getNode(), -1, 0);
-				$groupShares = $this->getSharedWith($user->getUID(), IShare::TYPE_USERGROUP, $share->getNode(), -1, 0);
+				$groupShares = $this->getSharedWith($user->getUID(), IShare::TYPE_GROUP, $share->getNode(), -1, 0);
 
 				// If the user has another shares, we don't delete the shares by this user
-				if (count($anotherShares) != 0 || count($groupShares) > 1) {
+				if (count($anotherShares) !== 0 || count($groupShares) > 1) {
 					continue;
 				}
 
