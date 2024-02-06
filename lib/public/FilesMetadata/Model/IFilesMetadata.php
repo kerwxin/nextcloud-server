@@ -37,12 +37,14 @@ use OCP\FilesMetadata\Exceptions\FilesMetadataTypeException;
  *   "mymeta": {
  *     "value": "this is a test",
  *     "type": "string",
+ *     "etag": "abcd1234",
  *     "indexed": false,
  *     "editPermission": 1
  *   },
  *   "myapp-anothermeta": {
  *     "value": 42,
  *     "type": "int",
+ *     "etag": "0987zyxw",
  *     "indexed": true,
  *     "editPermission": 0
  *   }
@@ -59,6 +61,14 @@ interface IFilesMetadata extends JsonSerializable {
 	 * @since 28.0.0
 	 */
 	public function getFileId(): int;
+
+	/**
+	 * returns the etag value of the file linked to this metadata
+	 *
+	 * @return string related file etag
+	 * @since 29.0.0
+	 */
+	public function getFileEtag(): string;
 
 	/**
 	 * returns last time metadata were updated in the database
@@ -111,6 +121,36 @@ interface IFilesMetadata extends JsonSerializable {
 	 * @since 28.0.0
 	 */
 	public function isIndex(string $key): bool;
+
+
+	/**
+	 * returns file etag stored during the last update of the metadata key
+	 *
+	 * @param string $key metadata key
+	 * @return string
+	 * @since 29.0.0
+	 */
+	public function getEtag(string $key): string;
+
+	/**
+	 * set file etag
+	 *
+	 * @param string $key metadata key
+	 * @since 29.0.0
+	 */
+	public function setEtag(string $key, string $etag): void;
+
+	/**
+	 * returns true if key exists and is up to date.
+	 * based on the current value of file etag.
+	 * returns false if file etag is not known.
+	 *
+	 * @param string $key metadata key
+	 *
+	 * @return bool
+	 * @since 29.0.0
+	 */
+	public function isUpToDate(string $key): bool;
 
 	/**
 	 * set remote edit permission

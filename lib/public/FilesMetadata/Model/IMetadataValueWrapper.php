@@ -31,7 +31,7 @@ use OCP\FilesMetadata\Exceptions\FilesMetadataTypeException;
 
 /**
  * Model that store the value of a single metadata.
- * It stores the value, its type and the index status.
+ * It stores the value, its type, the index status, and the etag value of the file at update time.
  *
  * @see IFilesMetadata
  * @since 28.0.0
@@ -284,6 +284,24 @@ interface IMetadataValueWrapper extends JsonSerializable {
 	 * @since 28.0.0
 	 */
 	public function getValueAny(): mixed;
+
+	/**
+	 * get stored etag value
+	 *
+	 * @return string stored etag
+	 * @since 29.0.0
+	 */
+	public function getEtag(): string;
+
+	/**
+	 * set etag value
+	 *
+	 * @param string $etag etag value
+	 *
+	 * @return self
+	 * @since 29.0.0
+	 */
+	public function setEtag(string $etag): self;
 
 	/**
 	 * @param bool $indexed TRUE to set the stored value as an indexed value

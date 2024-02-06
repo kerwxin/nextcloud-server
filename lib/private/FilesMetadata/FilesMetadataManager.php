@@ -96,9 +96,9 @@ class FilesMetadataManager implements IFilesMetadataManager {
 		string $namedEvent = ''
 	): IFilesMetadata {
 		try {
-			$metadata = $this->metadataRequestService->getMetadataFromFileId($node->getId());
+			$metadata = $this->metadataRequestService->getMetadataFromFileId($node->getId(), $node->getEtag());
 		} catch (FilesMetadataNotFoundException) {
-			$metadata = new FilesMetadata($node->getId());
+			$metadata = new FilesMetadata($node->getId(), $node->getEtag());
 		}
 
 		// if $process is LIVE, we enforce LIVE

@@ -70,20 +70,24 @@ class MetadataRequestService {
 	 * @return IFilesMetadata
 	 * @throws FilesMetadataNotFoundException if no metadata are found in database
 	 */
-	public function getMetadataFromFileId(int $fileId): IFilesMetadata {
+	public function getMetadataFromFileId(int $fileId, string $etag = ''): IFilesMetadata {
 		try {
 			$qb = $this->dbConnection->getQueryBuilder();
-			$qb->select('json', 'sync_token')->from(self::TABLE_METADATA);
-			$qb->where(
-				$qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT))
-			);
+			$qb->select('m.json', 'm.sync_token')->from(self::TABLE_METADATA, 'm');
+			if ($etag === '') {
+				/**
+				 * in the rare case $etag is not known yet, we left-join filecache to
+				 * get the current etag linked to the file id.
+				 */
+				$qb->addSelect('f.etag')
+				   ->leftJoin('m', 'filecache', 'f', $qb->expr()->eq('m.file_id', 'f.fileid'));
+			}
+			$qb->where($qb->expr()->eq('m.file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)));
 			$result = $qb->executeQuery();
 			$data = $result->fetch();
 			$result->closeCursor();
 		} catch (Exception $e) {
-			$this->logger->warning(
-				'exception while getMetadataFromDatabase()', ['exception' => $e, 'fileId' => $fileId]
-			);
+			$this->logger->warning('exception while getMetadataFromDatabase()', ['exception' => $e, 'fileId' => $fileId]);
 			throw new FilesMetadataNotFoundException();
 		}
 
@@ -91,16 +95,16 @@ class MetadataRequestService {
 			throw new FilesMetadataNotFoundException();
 		}
 
-		$metadata = new FilesMetadata($fileId);
+		// we can assume $data['etag'] is null only if $etag is an empty string.
+		$metadata = new FilesMetadata($fileId, $data['etag'] ?? $etag);
 		$metadata->importFromDatabase($data);
 
 		return $metadata;
 	}
 
+
 	/**
 	 * returns metadata for multiple file ids
-	 *
-	 * If
 	 *
 	 * @param array $fileIds file ids
 	 *
@@ -109,16 +113,16 @@ class MetadataRequestService {
 	 */
 	public function getMetadataFromFileIds(array $fileIds): array {
 		$qb = $this->dbConnection->getQueryBuilder();
-		$qb->select('file_id', 'json', 'sync_token')->from(self::TABLE_METADATA);
-		$qb->where(
-			$qb->expr()->in('file_id', $qb->createNamedParameter($fileIds, IQueryBuilder::PARAM_INT_ARRAY))
-		);
+		$qb->select('m.file_id', 'm.json', 'm.sync_token')->from(self::TABLE_METADATA);
+		$qb->addSelect('f.etag')
+		   ->leftJoin('m', 'filecache', 'f', $qb->expr()->eq('m.file_id', 'f.fileid'));
+		$qb->where($qb->expr()->in('m.file_id', $qb->createNamedParameter($fileIds, IQueryBuilder::PARAM_INT_ARRAY)));
 
 		$list = [];
 		$result = $qb->executeQuery();
 		while ($data = $result->fetch()) {
 			$fileId = (int) $data['file_id'];
-			$metadata = new FilesMetadata($fileId);
+			$metadata = new FilesMetadata($fileId, $data['etag'] ?? '');
 			try {
 				$metadata->importFromDatabase($data);
 			} catch (FilesMetadataNotFoundException) {

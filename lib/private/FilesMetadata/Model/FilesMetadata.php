@@ -46,7 +46,8 @@ class FilesMetadata implements IFilesMetadata {
 	private string $syncToken = '';
 
 	public function __construct(
-		private int $fileId = 0
+		private int $fileId = 0,
+		private string $fileEtag = '',
 	) {
 	}
 
@@ -57,6 +58,15 @@ class FilesMetadata implements IFilesMetadata {
 	 */
 	public function getFileId(): int {
 		return $this->fileId;
+	}
+
+	/**
+	 * @inheritDoc
+	 * @return string related file etag
+	 * @since 29.0.0
+	 */
+	public function getFileEtag(): string {
+		return $this->fileEtag;
 	}
 
 	/**
@@ -155,6 +165,35 @@ class FilesMetadata implements IFilesMetadata {
 
 		$this->metadata[$key]->setEditPermission($permission);
 	}
+
+
+	public function getEtag(string $key): string {
+		if (!array_key_exists($key, $this->metadata)) {
+			throw new FilesMetadataNotFoundException();
+		}
+
+		return $this->metadata[$key]->getEtag();
+	}
+
+	public function setEtag(string $key, string $etag): void {
+		if (!array_key_exists($key, $this->metadata)) {
+			throw new FilesMetadataNotFoundException();
+		}
+
+		$this->metadata[$key]->setEtag($etag);
+	}
+
+	/**
+	 * @param string $key metadata key
+	 *
+	 * @inheritDoc
+	 * @return bool
+	 * @since 29.0.0
+	 */
+	public function isUpToDate(string $key): bool {
+		return ($this->fileEtag !== '' && $this->hasKey($key) && $this->metadata[$key]->getEtag() === $this->getFileEtag());
+	}
+
 
 	/**
 	 * @param string $key metadata key
@@ -311,8 +350,8 @@ class FilesMetadata implements IFilesMetadata {
 	public function setString(string $key, string $value, bool $index = false): IFilesMetadata {
 		$this->confirmKeyFormat($key);
 		try {
-			if ($this->getString($key) === $value && $index === $this->isIndex($key)) {
-				return $this; // we ignore if value and index have not changed
+			if ($this->getString($key) === $value && $index === $this->isIndex($key) && $this->isUpToDate($key)) {
+				return $this; // we ignore if value and index have not changed and etag is still the same
 			}
 		} catch (FilesMetadataNotFoundException|FilesMetadataTypeException $e) {
 			// if value does not exist, or type has changed, we keep on the writing
@@ -320,7 +359,7 @@ class FilesMetadata implements IFilesMetadata {
 
 		$meta = new MetadataValueWrapper(IMetadataValueWrapper::TYPE_STRING);
 		$this->updated = true;
-		$this->metadata[$key] = $meta->setValueString($value)->setIndexed($index);
+		$this->metadata[$key] = $meta->setValueString($value)->setIndexed($index)->setEtag($this->getFileEtag());
 
 		return $this;
 	}
@@ -338,15 +377,15 @@ class FilesMetadata implements IFilesMetadata {
 	public function setInt(string $key, int $value, bool $index = false): IFilesMetadata {
 		$this->confirmKeyFormat($key);
 		try {
-			if ($this->getInt($key) === $value && $index === $this->isIndex($key)) {
-				return $this; // we ignore if value have not changed
+			if ($this->getInt($key) === $value && $index === $this->isIndex($key) && $this->isUpToDate($key)) {
+				return $this; // we ignore if value and index have not changed and etag is still the same
 			}
 		} catch (FilesMetadataNotFoundException|FilesMetadataTypeException $e) {
 			// if value does not exist, or type has changed, we keep on the writing
 		}
 
 		$meta = new MetadataValueWrapper(IMetadataValueWrapper::TYPE_INT);
-		$this->metadata[$key] = $meta->setValueInt($value)->setIndexed($index);
+		$this->metadata[$key] = $meta->setValueInt($value)->setIndexed($index)->setEtag($this->getFileEtag());
 		$this->updated = true;
 
 		return $this;
@@ -364,15 +403,15 @@ class FilesMetadata implements IFilesMetadata {
 	public function setFloat(string $key, float $value, bool $index = false): IFilesMetadata {
 		$this->confirmKeyFormat($key);
 		try {
-			if ($this->getFloat($key) === $value && $index === $this->isIndex($key)) {
-				return $this; // we ignore if value have not changed
+			if ($this->getFloat($key) === $value && $index === $this->isIndex($key) && $this->isUpToDate($key)) {
+				return $this; // we ignore if value and index have not changed and etag is still the same
 			}
 		} catch (FilesMetadataNotFoundException|FilesMetadataTypeException $e) {
 			// if value does not exist, or type has changed, we keep on the writing
 		}
 
 		$meta = new MetadataValueWrapper(IMetadataValueWrapper::TYPE_FLOAT);
-		$this->metadata[$key] = $meta->setValueFloat($value)->setIndexed($index);
+		$this->metadata[$key] = $meta->setValueFloat($value)->setIndexed($index)->setEtag($this->getFileEtag());
 		$this->updated = true;
 
 		return $this;
@@ -392,15 +431,15 @@ class FilesMetadata implements IFilesMetadata {
 	public function setBool(string $key, bool $value, bool $index = false): IFilesMetadata {
 		$this->confirmKeyFormat($key);
 		try {
-			if ($this->getBool($key) === $value && $index === $this->isIndex($key)) {
-				return $this; // we ignore if value have not changed
+			if ($this->getBool($key) === $value && $index === $this->isIndex($key) && $this->isUpToDate($key)) {
+				return $this; // we ignore if value and index have not changed and etag is still the same
 			}
 		} catch (FilesMetadataNotFoundException|FilesMetadataTypeException $e) {
 			// if value does not exist, or type has changed, we keep on the writing
 		}
 
 		$meta = new MetadataValueWrapper(IMetadataValueWrapper::TYPE_BOOL);
-		$this->metadata[$key] = $meta->setValueBool($value)->setIndexed($index);
+		$this->metadata[$key] = $meta->setValueBool($value)->setIndexed($index)->setEtag($this->getFileEtag());
 		$this->updated = true;
 
 		return $this;
@@ -419,15 +458,15 @@ class FilesMetadata implements IFilesMetadata {
 	public function setArray(string $key, array $value): IFilesMetadata {
 		$this->confirmKeyFormat($key);
 		try {
-			if ($this->getArray($key) === $value) {
-				return $this; // we ignore if value have not changed
+			if ($this->getArray($key) === $value && $this->isUpToDate($key)) {
+				return $this; // we ignore if value and index have not changed and etag is still the same
 			}
 		} catch (FilesMetadataNotFoundException|FilesMetadataTypeException $e) {
 			// if value does not exist, or type has changed, we keep on the writing
 		}
 
 		$meta = new MetadataValueWrapper(IMetadataValueWrapper::TYPE_ARRAY);
-		$this->metadata[$key] = $meta->setValueArray($value);
+		$this->metadata[$key] = $meta->setValueArray($value)->setEtag($this->getFileEtag());
 		$this->updated = true;
 
 		return $this;
@@ -446,15 +485,15 @@ class FilesMetadata implements IFilesMetadata {
 	public function setStringList(string $key, array $value, bool $index = false): IFilesMetadata {
 		$this->confirmKeyFormat($key);
 		try {
-			if ($this->getStringList($key) === $value) {
-				return $this; // we ignore if value have not changed
+			if ($this->getStringList($key) === $value && $this->isUpToDate($key)) {
+				return $this; // we ignore if value and index have not changed and etag is still the same
 			}
 		} catch (FilesMetadataNotFoundException|FilesMetadataTypeException $e) {
 			// if value does not exist, or type has changed, we keep on the writing
 		}
 
 		$meta = new MetadataValueWrapper(IMetadataValueWrapper::TYPE_STRING_LIST);
-		$this->metadata[$key] = $meta->setValueStringList($value)->setIndexed($index);
+		$this->metadata[$key] = $meta->setValueStringList($value)->setIndexed($index)->setEtag($this->getFileEtag());
 		$this->updated = true;
 
 		return $this;
@@ -473,15 +512,15 @@ class FilesMetadata implements IFilesMetadata {
 	public function setIntList(string $key, array $value, bool $index = false): IFilesMetadata {
 		$this->confirmKeyFormat($key);
 		try {
-			if ($this->getIntList($key) === $value) {
-				return $this; // we ignore if value have not changed
+			if ($this->getIntList($key) === $value && $this->isUpToDate($key)) {
+				return $this; // we ignore if value and index have not changed and etag is still the same
 			}
 		} catch (FilesMetadataNotFoundException|FilesMetadataTypeException $e) {
 			// if value does not exist, or type has changed, we keep on the writing
 		}
 
 		$valueWrapper = new MetadataValueWrapper(IMetadataValueWrapper::TYPE_STRING_LIST);
-		$this->metadata[$key] = $valueWrapper->setValueIntList($value)->setIndexed($index);
+		$this->metadata[$key] = $valueWrapper->setValueIntList($value)->setIndexed($index)->setEtag($this->getFileEtag());
 		$this->updated = true;
 
 		return $this;
