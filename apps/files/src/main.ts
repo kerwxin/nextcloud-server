@@ -1,16 +1,12 @@
 import Vue from 'vue'
 import { createPinia, PiniaVuePlugin } from 'pinia'
 import { getNavigation } from '@nextcloud/files'
-import { getRequestToken } from '@nextcloud/auth'
 
 import router from './router/router'
 import RouterService from './services/RouterService'
 import SettingsModel from './models/Setting.js'
 import SettingsService from './services/Settings.js'
 import FilesApp from './FilesApp.vue'
-
-// @ts-expect-error __webpack_nonce__ is injected by webpack
-__webpack_nonce__ = btoa(getRequestToken())
 
 declare global {
 	interface Window {

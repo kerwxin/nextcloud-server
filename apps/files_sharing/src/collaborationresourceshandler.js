@@ -21,9 +21,6 @@
  *
  */
 
-// eslint-disable-next-line camelcase
-__webpack_nonce__ = btoa(OC.requestToken)
-
 window.OCP.Collaboration.registerType('file', {
 	action: () => {
 		return new Promise((resolve, reject) => {

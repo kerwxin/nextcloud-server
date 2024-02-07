@@ -34,10 +34,6 @@ Vue.use(VTooltip, { defaultHtml: false })
 
 sync(store, router)
 
-// CSP config for webpack dynamic chunk loading
-// eslint-disable-next-line camelcase
-__webpack_nonce__ = btoa(OC.requestToken)
-
 // bind to window
 Vue.prototype.t = t
 Vue.prototype.n = n

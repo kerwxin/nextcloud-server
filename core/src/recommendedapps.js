@@ -20,15 +20,11 @@
  *
  */
 
-import { getRequestToken } from '@nextcloud/auth'
 import { translate as t } from '@nextcloud/l10n'
 import Vue from 'vue'
 
 import logger from './logger.js'
 import RecommendedApps from './components/setup/RecommendedApps.vue'
-
-// eslint-disable-next-line camelcase
-__webpack_nonce__ = btoa(getRequestToken())
 
 Vue.mixin({
 	methods: {
