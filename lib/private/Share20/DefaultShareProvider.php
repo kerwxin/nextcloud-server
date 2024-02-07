@@ -943,6 +943,10 @@ class DefaultShareProvider implements IShareProvider {
 			$user = $this->userManager->get($userId);
 			$allGroups = ($user instanceof IUser) ? $this->groupManager->getUserGroupIds($user) : [];
 
+			if ($allGroups === []) {
+				return [];
+			}
+
 			/** @var Share[] $shares2 */
 			$shares2 = [];
 
