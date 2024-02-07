@@ -30,6 +30,7 @@ use OCA\Files_Trashbin\Trash\ITrashManager;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
 use OCP\Files\Cache\CacheEntryRemovedEvent;
+use OCP\Files\Events\Node\AbstractNodesEvent;
 use OCP\Files\Events\Node\BeforeNodeCopiedEvent;
 use OCP\Files\Events\Node\BeforeNodeDeletedEvent;
 use OCP\Files\Events\Node\BeforeNodeRenamedEvent;
@@ -46,7 +47,7 @@ use OCP\IUserSession;
  * @template-implements IEventListener<Event>
  */
 class SyncLivePhotosListener implements IEventListener {
-	/** @var Array<int, string> */
+	/** @var Array<int> */
 	private array $pendingRenames = [];
 	/** @var Array<int, bool> */
 	private array $pendingDeletion = [];
@@ -105,7 +106,12 @@ class SyncLivePhotosListener implements IEventListener {
 	 * of pending renames inside the 'pendingRenames' property,
 	 * to prevent infinite recursive.
 	 */
-	private function handleMove(Event $event, Node $peerFile, bool $prepForCopyOnly = false): void {
+	private function handleMove(AbstractNodesEvent $event, Node $peerFile, bool $prepForCopyOnly = false): void {
+		if (!($event instanceof BeforeNodeCopiedEvent) &&
+			!($event instanceof BeforeNodeRenamedEvent)) {
+			return;
+		}
+
 		$sourceFile = $event->getSource();
 		$targetFile = $event->getTarget();
 		$targetParent = $targetFile->getParent();
@@ -120,30 +126,29 @@ class SyncLivePhotosListener implements IEventListener {
 		try {
 			$targetParent->get($targetName);
 			$event->abortOperation(new NotPermittedException("A file already exist at destination path of the Live Photo"));
-		} catch (NotFoundException $ex) {
+		} catch (NotFoundException) {
 		}
 
 		$peerTargetName = substr($targetName, 0, -strlen($sourceExtension)) . $peerFileExtension;
 		try {
 			$targetParent->get($peerTargetName);
 			$event->abortOperation(new NotPermittedException("A file already exist at destination path of the Live Photo"));
-		} catch (NotFoundException $ex) {
+		} catch (NotFoundException) {
 		}
 
 		// in case the rename was initiated from this listener, we stop right now
-		if (array_key_exists($peerFile->getId(), $this->pendingRenames)) {
+		if ($prepForCopyOnly || in_array($peerFile->getId(), $this->pendingRenames)) {
 			return;
 		}
 
-		$this->pendingRenames[$sourceFile->getId()] = $peerFile->getId();
+		$this->pendingRenames[] = $sourceFile->getId();
 		try {
-			if (!$prepForCopyOnly) {
-				$peerFile->move($targetParent->getPath() . '/' . $peerTargetName);
-			}
+			$peerFile->move($targetParent->getPath() . '/' . $peerTargetName);
 		} catch (\Throwable $ex) {
 			$event->abortOperation($ex);
 		}
-		unset($this->pendingRenames[$sourceFile->getId()]);
+
+		array_diff($this->pendingRenames, [$sourceFile->getId()]);
 	}
 
 
