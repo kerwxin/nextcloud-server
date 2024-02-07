@@ -14,6 +14,7 @@
  * Select2 extension for toggling values in a multi-select dropdown
  */
 (function(Select2) {
+	if (!Select2) return;
 
 	var Select2FindHighlightableChoices = Select2.class.multi.prototype.findHighlightableChoices;
 	Select2.class.multi.prototype.findHighlightableChoices = function () {
@@ -50,5 +51,5 @@
 		}
 	};
 
-})(Select2);
+})(window.Select2);
 

@@ -1,10 +1,10 @@
 /**
- * @copyright 2018 Christoph Wurst <christoph@winzerhof-wurst.at>
+ * @copyright 2019 Christoph Wurst <christoph@winzerhof-wurst.at>
  *
  * @author Christoph Wurst <christoph@winzerhof-wurst.at>
  * @author John Molakvoæ <skjnldsv@protonmail.com>
  * @author Julius Härtl <jus@bitgrid.net>
- * @author Roeland Jago Douma <roeland@famdouma.nl>
+ * @author Ferdinand Thiessen <opensource@fthiessen.de>
  *
  * @license AGPL-3.0-or-later
  *
@@ -23,26 +23,17 @@
  *
  */
 
-import 'core-js/stable/index.js'
-import 'regenerator-runtime/runtime.js'
+import { deprecate } from './utils/deprecate.js'
 
-// If you remove the line below, tests won't pass
-// eslint-disable-next-line no-unused-vars
-import OC from './OC/index.js'
+// This needs to be the first to setup the globals
+import './legacy-globals.js'
+import 'jquery-ui-dist/jquery-ui.js'
+import 'jquery-ui-dist/jquery-ui.css'
+import 'jquery-ui-dist/jquery-ui.theme.css'
+import 'select2'
+import 'select2/select2.css'
+import 'snap.js/dist/snap.js'
+import 'strengthify'
+import 'strengthify/strengthify.css'
 
-import './globals.js'
-// import './jquery/index.js'
-import { initCore } from './init.js'
-import { registerAppsSlideToggle } from './OC/apps.js'
-
-window.addEventListener('DOMContentLoaded', function() {
-	initCore()
-	registerAppsSlideToggle()
-
-	// fallback to hashchange when no history support
-	if (window.history.pushState) {
-		window.onpopstate = _.bind(OC.Util.History._onPopState, OC.Util.History)
-	} else {
-		window.onhashchange = _.bind(OC.Util.History._onPopState, OC.Util.History)
-	}
-})
+window.$.fn.select2 = deprecate(window.$.fn.select2, 'select2', 19)
