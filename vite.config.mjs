@@ -24,6 +24,7 @@ export default createAppConfig(
 			build: {
 				cssCodeSplit: false,
 				rollupOptions: {
+					preserveEntrySignatures: 'allow-extension',
 					output: {
 						chunkFileNames: (info) => info.name.match(/core-common/) ? 'dist/core-common.mjs' : 'dist/chunks/[name]-[hash].mjs',
 						entryFileNames: 'dist/[name].mjs',

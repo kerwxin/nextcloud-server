@@ -274,6 +274,14 @@ class TemplateLayout extends \OC_Template {
 			$this->append('jsfiles', $web.'/'.$file . $this->getVersionHashSuffix());
 		}
 
+		$jsModules = array_map(function (string $path) {
+			$info = end(self::findJavascriptFiles([$path]));
+			$web = $info[1];
+			$file = $info[2];
+			return $web . '/' . $file . $this->getVersionHashSuffix();
+		}, Util::getSharedModules());
+		$this->assign('jsmodules', $jsModules);
+
 		try {
 			$pathInfo = \OC::$server->getRequest()->getPathInfo();
 		} catch (\Exception $e) {
