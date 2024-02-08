@@ -53,13 +53,14 @@
 				:close-after-click="!isMenu(action.id)"
 				:data-cy-files-list-row-action="action.id"
 				:is-menu="isMenu(action.id)"
+				:aria-label="actionAriaLabel(action)"
 				:title="action.title?.([source], currentView)"
 				@click="onActionClick(action)">
 				<template #icon>
 					<NcLoadingIcon v-if="loading === action.id" :size="18" />
 					<NcIconSvgWrapper v-else :svg="action.iconSvgInline([source], currentView)" />
 				</template>
-				{{ mountType === 'shared' && action.id === 'sharing-status' ? '' : actionDisplayName(action) }}
+				{{ actionDisplayName(action) }}
 			</NcActionButton>
 
 			<!-- Submenu actions list-->
@@ -261,14 +262,35 @@ export default Vue.extend({
 	},
 
 	methods: {
+		isInlineActionToBeRenderedInMenu(action: FileAction) {
+			return this.gridMode || (this.filesListWidth < 768 && action.inline)
+		},
+
 		actionDisplayName(action: FileAction) {
-			if ((this.gridMode || (this.filesListWidth < 768 && action.inline)) && typeof action.title === 'function') {
+			const isInline = action.inline?.(this.source, this.currentView)
+			const isToBeRenderedInMenu = !isInline || this.gridMode || this.filesListWidth < 768
+
+			if (!isToBeRenderedInMenu && this.mountType === 'shared' && action.id === 'sharing-status') {
+				// A special case - don't show the display text for sharing status in inline action
+				// TODO: probably, FileAction should have optional displayNameInline to support different display name inline and in menu
+				return ''
+			}
+
+			if (isInline && isToBeRenderedInMenu) {
 				// if an inline action is rendered in the menu for
 				// lack of space we use the title first if defined
-				const title = action.title([this.source], this.currentView)
-				if (title) return title
+				const title = action.title?.([this.source], this.currentView)
+				if (title) {
+					return title
+				}
 			}
+
 			return action.displayName([this.source], this.currentView)
+		},
+
+		actionAriaLabel(action: FileAction) {
+			// A special case - sharing status in inline action
+			return this.actionDisplayName(action) || action.title([this.source], this.currentView)
 		},
 
 		async onActionClick(action, isSubmenu = false) {
