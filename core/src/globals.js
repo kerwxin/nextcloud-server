@@ -45,8 +45,6 @@ import moment from 'moment'
 import 'select2'
 import 'select2/select2.css'
 import 'snap.js/dist/snap.js'
-import 'strengthify'
-import 'strengthify/strengthify.css'
 
 import OC from './OC/index.js'
 import OCP from './OCP/index.js'

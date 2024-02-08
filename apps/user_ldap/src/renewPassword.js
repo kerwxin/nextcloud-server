@@ -19,33 +19,39 @@
  *
  */
 
-OCA = OCA || {};
+import $ from 'jquery'
+import _ from 'underscore'
+
+import 'strengthify'
+import 'strengthify/strengthify.css'
+
+const OCA = window.OCA ?? {}
 OCA.LDAP = _.extend(OC.LDAP || {}, {
-	onRenewPassword: function () {
+	onRenewPassword() {
 		$('#submit')
 			.removeClass('icon-confirm-white')
 			.addClass('icon-loading-small')
-			.attr('value', t('core', 'Renewing …'));
-		return true;
+			.attr('value', t('core', 'Renewing …'))
+		return true
 	},
-});
+})
 
 window.addEventListener('DOMContentLoaded', function() {
-	$('form[name=renewpassword]').submit(OCA.LDAP.onRenewPassword);
+	$('form[name=renewpassword]').submit(OCA.LDAP.onRenewPassword)
 
-	if($('#newPassword').length) {
-		$('#newPassword').showPassword().keyup();
+	if ($('#newPassword').length) {
+		$('#newPassword').showPassword().keyup()
 	}
 	$('#newPassword').strengthify({
-		zxcvbn: OC.linkTo('core','vendor/zxcvbn/dist/zxcvbn.js'),
+		zxcvbn: OC.linkTo('core', 'vendor/zxcvbn/dist/zxcvbn.js'),
 		titles: [
 			t('core', 'Very weak password'),
 			t('core', 'Weak password'),
 			t('core', 'So-so password'),
 			t('core', 'Good password'),
-			t('core', 'Strong password')
+			t('core', 'Strong password'),
 		],
 		drawTitles: true,
 		$addAfter: $('input[name="newPassword-clone"]'),
-	});
-});
+	})
+})

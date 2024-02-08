@@ -115,6 +115,9 @@ module.exports = {
 	updatenotification: {
 		updatenotification: path.join(__dirname, 'apps/updatenotification/src', 'init.js'),
 	},
+	user_ldap: {
+		renewPassword: path.join(__dirname, 'apps/user_ldap/src', 'renewPassword.js'),
+	},
 	user_status: {
 		menu: path.join(__dirname, 'apps/user_status/src', 'menu.js'),
 	},
