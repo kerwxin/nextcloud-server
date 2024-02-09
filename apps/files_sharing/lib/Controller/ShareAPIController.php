@@ -203,15 +203,13 @@ class ShareAPIController extends OCSController {
 		if ($recipientNode) {
 			$node = $recipientNode;
 		} else {
-			$nodes = $userFolder->getById($share->getNodeId());
-			if (empty($nodes)) {
+			$node = $userFolder->getFirstNodeById($share->getNodeId());
+			if (!$node) {
 				// fallback to guessing the path
 				$node = $userFolder->get($share->getTarget());
 				if ($node === null || $share->getTarget() === '') {
 					throw new NotFoundException();
 				}
-			} else {
-				$node = reset($nodes);
 			}
 		}
 
@@ -1140,8 +1138,7 @@ class ShareAPIController extends OCSController {
 			$owner = $node->getOwner()
 						  ->getUID();
 			$userFolder = $this->rootFolder->getUserFolder($owner);
-			$nodes = $userFolder->getById($node->getId());
-			$node = array_shift($nodes);
+			$node = $userFolder->getFirstNodeById($node->getId());
 		}
 		$basePath = $userFolder->getPath();
 
@@ -1162,9 +1159,9 @@ class ShareAPIController extends OCSController {
 		foreach ($nodes as $node) {
 			$getShares = $this->getFormattedShares($owner, $node, false, true);
 
-			$currentUserNodes = $currentUserFolder->getById($node->getId());
-			if (!empty($currentUserNodes)) {
-				$parent = array_pop($currentUserNodes);
+			$currentUserNode = $currentUserFolder->getFirstNodeById($node->getId());
+			if ($currentUserNode) {
+				$parent = $currentUserNode;
 			}
 
 			$subPath = $currentUserFolder->getRelativePath($parent->getPath());
@@ -1421,15 +1418,13 @@ class ShareAPIController extends OCSController {
 
 		$result = array_filter(array_map(function (IShare $share) {
 			$userFolder = $this->rootFolder->getUserFolder($share->getSharedBy());
-			$nodes = $userFolder->getById($share->getNodeId());
-			if (empty($nodes)) {
+			$node = $userFolder->getFirstNodeById($share->getNodeId());
+			if (!$node) {
 				// fallback to guessing the path
 				$node = $userFolder->get($share->getTarget());
 				if ($node === null || $share->getTarget() === '') {
 					return null;
 				}
-			} else {
-				$node = $nodes[0];
 			}
 
 			try {
@@ -1514,8 +1509,8 @@ class ShareAPIController extends OCSController {
 		// Have reshare rights on the shared file/folder ?
 		// Does the currentUser have access to the shared file?
 		$userFolder = $this->rootFolder->getUserFolder($this->currentUser);
-		$files = $userFolder->getById($share->getNodeId());
-		if (!empty($files) && $this->shareProviderResharingRights($this->currentUser, $share, $files[0])) {
+		$file = $userFolder->getFirstNodeById($share->getNodeId());
+		if ($file && $this->shareProviderResharingRights($this->currentUser, $share, $file)) {
 			return true;
 		}
 
@@ -2087,11 +2082,10 @@ class ShareAPIController extends OCSController {
 			return; // Probably in a test
 		}
 		$userFolder = $this->rootFolder->getUserFolder($share->getSharedBy());
-		$nodes = $userFolder->getById($share->getNodeId());
-		if (empty($nodes)) {
+		$node = $userFolder->getFirstNodeById($share->getNodeId());
+		if (!$node) {
 			return;
 		}
-		$node = $nodes[0];
 		if ($node->getStorage()->instanceOfStorage(SharedStorage::class)) {
 			$storage = $node->getStorage();
 			if ($storage instanceof Wrapper) {
