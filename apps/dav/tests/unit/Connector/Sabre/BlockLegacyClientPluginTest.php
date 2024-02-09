@@ -64,7 +64,20 @@ class BlockLegacyClientPluginTest extends TestCase {
 	 */
 	public function testBeforeHandlerException(string $userAgent): void {
 		$this->expectException(\Sabre\DAV\Exception\Forbidden::class);
-		$this->expectExceptionMessage('Unsupported client version.');
+
+		$this->config
+			->expects($this->once())
+			->method('getSystemValue')
+			->with('customclient_desktop', 'https://nextcloud.com/install/#install-clients')
+			->willReturn('https://nextcloud.com/install/#install-clients');
+
+		$this->config
+			->expects($this->once())
+			->method('getSystemValue')
+			->with('minimum.supported.desktop.version', '2.3.0')
+			->willReturn('1.7.0');
+
+		$this->expectExceptionMessage('This version of the client is unsupported. Upgrade to version 1.7.0 or later. Please open https://nextcloud.com/install/#install-clients to download the update.');
 
 		/** @var RequestInterface|MockObject $request */
 		$request = $this->createMock('\Sabre\HTTP\RequestInterface');
@@ -74,11 +87,6 @@ class BlockLegacyClientPluginTest extends TestCase {
 			->with('User-Agent')
 			->willReturn($userAgent);
 
-		$this->config
-			->expects($this->once())
-			->method('getSystemValue')
-			->with('minimum.supported.desktop.version', '2.3.0')
-			->willReturn('1.7.0');
 
 		$this->blockLegacyClientVersionPlugin->beforeHandler($request);
 	}
