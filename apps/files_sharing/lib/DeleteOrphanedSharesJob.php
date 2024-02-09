@@ -102,7 +102,7 @@ class DeleteOrphanedSharesJob extends TimedJob {
 		 * that has shown to (dead)lock often.
 		 */
 		do {
-			$deleted = $this->atomic(function() use ($qbSelect, $deleteQb) {
+			$deleted = $this->atomic(function () use ($qbSelect, $deleteQb) {
 				$result = $qbSelect->executeQuery();
 				$ids = array_map('intval', $result->fetchAll(PDO::FETCH_COLUMN));
 				$result->closeCursor();
