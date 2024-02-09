@@ -123,10 +123,6 @@ export const initCore = () => {
 		OC.hideMenus()
 	})
 
-	setUpMainMenu()
-	setUpUserMenu()
-	setUpContactsMenu()
-
 	// just add snapper for logged in users
 	// and if the app doesn't handle the nav slider itself
 	if ($('#app-navigation').length && !$('html').hasClass('lte9')
@@ -297,4 +293,13 @@ export const initCore = () => {
 	}
 
 	initLiveTimestamps()
+}
+
+/**
+ * Initializes core apps
+ */
+export const initCoreApps = () => {
+	setUpMainMenu()
+	setUpUserMenu()
+	setUpContactsMenu()
 }

@@ -33,12 +33,14 @@ import OC from './OC/index.js'
 
 import './globals.js'
 import './jquery/index.js'
-import { initCore } from './init.js'
+import { initCore, initCoreApps } from './init.js'
 import { registerAppsSlideToggle } from './OC/apps.js'
 import { getRequestToken } from '@nextcloud/auth'
 
 // eslint-disable-next-line camelcase
 __webpack_nonce__ = btoa(getRequestToken())
+
+initCoreApps()
 
 window.addEventListener('DOMContentLoaded', function() {
 	initCore()
