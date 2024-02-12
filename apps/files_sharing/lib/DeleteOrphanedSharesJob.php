@@ -45,16 +45,11 @@ class DeleteOrphanedSharesJob extends TimedJob {
 
 	private const CHUNK_SIZE = 1000;
 
+	private const INTERVAL = 5 * 60;
+
 	private IDBConnection $db;
 
 	private LoggerInterface $logger;
-
-	/**
-	 * Default interval in minutes
-	 *
-	 * @var int $defaultIntervalMin
-	 **/
-	protected $defaultIntervalMin = 15;
 
 	/**
 	 * sets the correct interval for this timed job
@@ -66,7 +61,7 @@ class DeleteOrphanedSharesJob extends TimedJob {
 
 		$this->db = $db;
 
-		$this->interval = $this->defaultIntervalMin * 60;
+		$this->setInterval(self::INTERVAL);
 		$this->logger = $logger;
 	}
 
@@ -90,7 +85,7 @@ class DeleteOrphanedSharesJob extends TimedJob {
 
 		/**
 		 * Read a chunk of orphan rows and delete them. Continue as long as the
-		 * chunk is filled.
+		 * chunk is filled and time before the next cron run does not run out.
 		 *
 		 * Note: With isolation level READ COMMITTED, the database will allow
 		 * other transactions to delete rows between our SELECT and DELETE. In
@@ -101,6 +96,7 @@ class DeleteOrphanedSharesJob extends TimedJob {
 		 * could be combined into one single DELETE with join or sub query, but
 		 * that has shown to (dead)lock often.
 		 */
+		$cutOff = $this->time->getTime() + self::INTERVAL;
 		do {
 			$deleted = $this->atomic(function () use ($qbSelect, $deleteQb) {
 				$result = $qbSelect->executeQuery();
@@ -114,6 +110,6 @@ class DeleteOrphanedSharesJob extends TimedJob {
 				]);
 				return $deleted;
 			}, $this->db);
-		} while ($deleted >= self::CHUNK_SIZE);
+		} while ($deleted >= self::CHUNK_SIZE && $this->time->getTime() <= $cutOff);
 	}
 }
