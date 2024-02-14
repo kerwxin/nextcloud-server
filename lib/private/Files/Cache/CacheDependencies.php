@@ -20,6 +20,7 @@ class CacheDependencies {
 		private LoggerInterface $logger,
 		private IFilesMetadataManager $metadataManager,
 		private DisplayNameCache $displayNameCache,
+		private Database $cacheDb,
 	) {
 	}
 
@@ -53,5 +54,9 @@ class CacheDependencies {
 
 	public function getMetadataManager(): IFilesMetadataManager {
 		return $this->metadataManager;
+	}
+
+	public function getCacheDb(): Database {
+		return $this->cacheDb;
 	}
 }
