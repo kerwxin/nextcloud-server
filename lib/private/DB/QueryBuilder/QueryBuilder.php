@@ -77,6 +77,17 @@ class QueryBuilder implements IQueryBuilder {
 	protected $lastInsertedTable;
 
 	/**
+	 * Tables that require special attention and thus can't be queried by default
+	 *
+	 * @var list<string>
+	 */
+	protected array $forbiddenTables = [
+		'filecache',
+		'filecache_extended',
+		'files_metadata'
+	];
+
+	/**
 	 * Initializes a new QueryBuilder.
 	 *
 	 * @param ConnectionAdapter $connection
@@ -693,6 +704,10 @@ class QueryBuilder implements IQueryBuilder {
 	 * @return $this This QueryBuilder instance.
 	 */
 	public function from($from, $alias = null) {
+		if (in_array($from, $this->forbiddenTables)) {
+			throw new \Exception("current query isn't allowed to access the $from table");
+		}
+
 		$this->queryBuilder->from(
 			$this->getTableName($from),
 			$this->quoteAlias($alias)
@@ -719,6 +734,10 @@ class QueryBuilder implements IQueryBuilder {
 	 * @return $this This QueryBuilder instance.
 	 */
 	public function join($fromAlias, $join, $alias, $condition = null) {
+		if (in_array($join, $this->forbiddenTables)) {
+			throw new \Exception("current query isn't allowed to access the $join table");
+		}
+
 		$this->queryBuilder->join(
 			$this->quoteAlias($fromAlias),
 			$this->getTableName($join),
@@ -747,6 +766,10 @@ class QueryBuilder implements IQueryBuilder {
 	 * @return $this This QueryBuilder instance.
 	 */
 	public function innerJoin($fromAlias, $join, $alias, $condition = null) {
+		if (in_array($join, $this->forbiddenTables)) {
+			throw new \Exception("current query isn't allowed to access the $join table");
+		}
+
 		$this->queryBuilder->innerJoin(
 			$this->quoteAlias($fromAlias),
 			$this->getTableName($join),
@@ -775,6 +798,10 @@ class QueryBuilder implements IQueryBuilder {
 	 * @return $this This QueryBuilder instance.
 	 */
 	public function leftJoin($fromAlias, $join, $alias, $condition = null) {
+		if (in_array($join, $this->forbiddenTables)) {
+			throw new \Exception("current query isn't allowed to access the $join table");
+		}
+
 		$this->queryBuilder->leftJoin(
 			$this->quoteAlias($fromAlias),
 			$this->getTableName($join),
@@ -803,6 +830,10 @@ class QueryBuilder implements IQueryBuilder {
 	 * @return $this This QueryBuilder instance.
 	 */
 	public function rightJoin($fromAlias, $join, $alias, $condition = null) {
+		if (in_array($join, $this->forbiddenTables)) {
+			throw new \Exception("current query isn't allowed to access the $join table");
+		}
+
 		$this->queryBuilder->rightJoin(
 			$this->quoteAlias($fromAlias),
 			$this->getTableName($join),
@@ -1359,5 +1390,17 @@ class QueryBuilder implements IQueryBuilder {
 
 	public function escapeLikeParameter(string $parameter): string {
 		return $this->connection->escapeLikeParameter($parameter);
+	}
+
+	/**
+	 * Mark the query as being allowed to access a table that is normally forbidden
+	 *
+	 * Proper attention needs to be given to ensure that all requirements for accessing the table are met
+	 *
+	 * @param string $table
+	 * @return void
+	 */
+	public function allowTable(string $table): void {
+		$this->forbiddenTables = array_diff($this->forbiddenTables, [$table]);
 	}
 }
