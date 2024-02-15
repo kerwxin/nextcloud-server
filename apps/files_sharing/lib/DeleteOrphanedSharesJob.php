@@ -30,19 +30,11 @@ use OC\BackgroundJob\TimedJob;
  * Delete all share entries that have no matching entries in the file cache table.
  */
 class DeleteOrphanedSharesJob extends TimedJob {
-
-	/**
-	 * Default interval in minutes
-	 *
-	 * @var int $defaultIntervalMin
-	 **/
-	protected $defaultIntervalMin = 15;
-
 	/**
 	 * sets the correct interval for this timed job
 	 */
 	public function __construct() {
-		$this->interval = $this->defaultIntervalMin * 60;
+		$this->setInterval(24 * 60 * 60); // 1 day
 	}
 
 	/**
