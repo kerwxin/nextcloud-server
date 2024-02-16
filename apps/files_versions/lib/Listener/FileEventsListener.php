@@ -361,6 +361,14 @@ class FileEventsListener implements IEventListener {
 		}
 
 		$owner = $node->getOwner()?->getUid();
+
+		if (!$owner) {
+			$parts = explode('/', $node->getPath(), 4);
+			if (count($parts) === 4) {
+				$owner = $parts[1];
+			}
+		}
+
 		if ($owner) {
 			$path = $this->rootFolder
 				->getUserFolder($owner)
