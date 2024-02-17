@@ -267,7 +267,6 @@ export default {
 				this.searching = false
 				return
 			}
-			// Event should probably be refactored at some point to used nextcloud:unified-search.search
 			emit('nextcloud:unified-search.search', { query })
 			const newResults = []
 			const providersToSearch = this.filteredProviders.length > 0 ? this.filteredProviders : this.providers

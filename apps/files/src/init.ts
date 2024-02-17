@@ -41,7 +41,6 @@ import registerPersonalFilesView from './views/personal-files'
 import registerFilesView from './views/files'
 import registerPreviewServiceWorker from './services/ServiceWorker.js'
 
-
 import { initLivePhotos } from './services/LivePhotos'
 
 // Register file actions

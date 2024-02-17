@@ -24,6 +24,7 @@ import { subscribe } from '@nextcloud/event-bus'
 
 (function() {
 
+	console.debug("RESPOND TO FILTER EVENT")
 	const FilesPlugin = {
 		attach(fileList) {
 			subscribe('nextcloud:unified-search.search', ({ query }) => {
