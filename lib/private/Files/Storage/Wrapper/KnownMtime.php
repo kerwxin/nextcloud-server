@@ -86,8 +86,8 @@ class KnownMtime extends Wrapper {
 	public function rename($source, $target) {
 		$result = parent::rename($source, $target);
 		if ($result) {
-			$this->knowMtimes->set($target, $this->clock->now()->getTimestamp());
-			$this->knowMtimes->set($source, $this->clock->now()->getTimestamp());
+			$this->knowMtimes->set($target, $this->filemtime($source));
+			$this->knowMtimes->remove($source);
 		}
 		return $result;
 	}
