@@ -451,47 +451,31 @@ class Request implements \ArrayAccess, \Countable, IRequest {
 
 
 	/**
-	 * Checks if the CSRF check was correct
-	 * @return bool true if CSRF check passed
+	 * Checks if the request passes any of the CSRF requirements.
+	 *
+	 * How the checks prevent attackers from sending malicious requests:
+	 * 1. The browser will fail to send the OCS-APIREQUEST header because of CORS.
+	 * 2. The browser will not send the cookies because they are sent from a different host (strict vs. lax).
+	 * 3. The token can only be obtained with methods that are again blocked using CORS.
 	 */
 	public function passesCSRFCheck(): bool {
+		return $this->getHeader('OCS-APIREQUEST') || $this->passesStrictCookieCheck() || $this->passesCSRFTokenCheck();
+	}
+
+	/**
+	 * Reads the CSRF token from the GET or POST parameters or the headers and validates it.
+	 */
+	private function passesCSRFTokenCheck(): bool {
+		$token = $this->items['get']['requesttoken'] ?? $this->items['post']['requesttoken'] ?? $this->items['server']['HTTP_REQUESTTOKEN'] ?? null;
+		if ($token === null) {
+			return false;
+		}
+
 		if ($this->csrfTokenManager === null) {
 			return false;
 		}
 
-		if (!$this->passesStrictCookieCheck()) {
-			return false;
-		}
-
-		if (isset($this->items['get']['requesttoken'])) {
-			$token = $this->items['get']['requesttoken'];
-		} elseif (isset($this->items['post']['requesttoken'])) {
-			$token = $this->items['post']['requesttoken'];
-		} elseif (isset($this->items['server']['HTTP_REQUESTTOKEN'])) {
-			$token = $this->items['server']['HTTP_REQUESTTOKEN'];
-		} else {
-			//no token found.
-			return false;
-		}
-		$token = new CsrfToken($token);
-
-		return $this->csrfTokenManager->isTokenValid($token);
-	}
-
-	/**
-	 * Whether the cookie checks are required
-	 *
-	 * @return bool
-	 */
-	private function cookieCheckRequired(): bool {
-		if ($this->getHeader('OCS-APIREQUEST')) {
-			return false;
-		}
-		if ($this->getCookie(session_name()) === null && $this->getCookie('nc_token') === null) {
-			return false;
-		}
-
-		return true;
+		return $this->csrfTokenManager->isTokenValid(new CsrfToken($token));
 	}
 
 	/**
@@ -527,16 +511,8 @@ class Request implements \ArrayAccess, \Countable, IRequest {
 	 * @since 9.1.0
 	 */
 	public function passesStrictCookieCheck(): bool {
-		if (!$this->cookieCheckRequired()) {
-			return true;
-		}
-
 		$cookieName = $this->getProtectedCookieName('nc_sameSiteCookiestrict');
-		if ($this->getCookie($cookieName) === 'true'
-			&& $this->passesLaxCookieCheck()) {
-			return true;
-		}
-		return false;
+		return $this->getCookie($cookieName) === 'true' && $this->passesLaxCookieCheck();
 	}
 
 	/**
@@ -547,15 +523,8 @@ class Request implements \ArrayAccess, \Countable, IRequest {
 	 * @since 9.1.0
 	 */
 	public function passesLaxCookieCheck(): bool {
-		if (!$this->cookieCheckRequired()) {
-			return true;
-		}
-
 		$cookieName = $this->getProtectedCookieName('nc_sameSiteCookielax');
-		if ($this->getCookie($cookieName) === 'true') {
-			return true;
-		}
-		return false;
+		return $this->getCookie($cookieName) === 'true';
 	}
 
 
