@@ -128,22 +128,33 @@ class DeclarativeManager implements IDeclarativeManager {
 	 * @inheritdoc
 	 * @throws Exception
 	 */
-	public function getFormsWithValues(IUser $user, string $type, string $section): array {
+	public function getFormsWithValues(IUser $user, ?string $type, ?string $section): array {
+		$isAdmin = $this->groupManager->isAdmin($user->getUID());
 		$forms = [];
 
 		foreach ($this->appSchemas as $app => $schemas) {
 			foreach ($schemas as $schema) {
-				if ($schema['section_type'] === $type && $schema['section_id'] === $section) {
-					$s = $schema;
-					$s['app'] = $app;
-
-					foreach ($s['fields'] as &$field) {
-						$field['value'] = $this->getValue($user, $app, $schema['id'], $field['id']);
-					}
-
-					/** @var DeclarativeSettingsFormSchemaWithValues $s */
-					$forms[] = $s;
+				if ($type !== null && $schema['section_type'] !== $type) {
+					continue;
 				}
+				if ($section !== null && $schema['section_id'] !== $section) {
+					continue;
+				}
+				// If listing all fields skip the admin fields which a non-admin user has no access to
+				if ($type === null && $schema['section_type'] === 'admin' && !$isAdmin) {
+					continue;
+				}
+
+				$s = $schema;
+				$s['app'] = $app;
+
+				foreach ($s['fields'] as &$field) {
+					$field['value'] = $this->getValue($user, $app, $schema['id'], $field['id']);
+				}
+				unset($field);
+
+				/** @var DeclarativeSettingsFormSchemaWithValues $s */
+				$forms[] = $s;
 			}
 		}
 

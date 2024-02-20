@@ -83,6 +83,7 @@ return [
 		['name' => 'Reasons#getPdf', 'url' => '/settings/download/reasons', 'verb' => 'GET', 'root' => ''],
 	],
 	'ocs' => [
-		['name' => 'DeclarativeSettings#setValue', 'url' => '/settings/api/declarative', 'verb' => 'POST', 'root' => ''],
+		['name' => 'DeclarativeSettings#setValue', 'url' => '/settings/api/declarative/value', 'verb' => 'POST', 'root' => ''],
+		['name' => 'DeclarativeSettings#getForms', 'url' => '/settings/api/declarative/forms', 'verb' => 'GET', 'root' => ''],
 	],
 ];

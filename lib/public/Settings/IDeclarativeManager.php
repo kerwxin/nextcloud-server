@@ -66,12 +66,13 @@ interface IDeclarativeManager {
 	 * Gets the forms including the field values for the given type and section.
 	 *
 	 * @param IUser $user Used for reading values from the personal section or for authorization for the admin section.
-	 * @param DeclarativeSettingsSectionType $type
+	 * @param ?DeclarativeSettingsSectionType $type If it is null the forms will not be filtered by type.
+	 * @param ?string $section If it is null the forms will not be filtered by section.
 	 * @return list<DeclarativeSettingsFormSchemaWithValues>
 	 *
 	 * @since 29.0.0
 	 */
-	public function getFormsWithValues(IUser $user, string $type, string $section): array;
+	public function getFormsWithValues(IUser $user, ?string $type, ?string $section): array;
 
 	/**
 	 * Sets a value for the given field ID.

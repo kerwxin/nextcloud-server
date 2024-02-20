@@ -26,6 +26,7 @@ namespace OCA\Settings\Controller;
 use Exception;
 use OC\AppFramework\Middleware\Security\Exceptions\NotAdminException;
 use OC\AppFramework\Middleware\Security\Exceptions\NotLoggedInException;
+use OCA\Settings\ResponseDefinitions;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\DataResponse;
@@ -37,7 +38,7 @@ use OCP\Settings\IDeclarativeManager;
 use Psr\Log\LoggerInterface;
 
 /**
- * @since 29.0.0
+ * @psalm-import-type SettingsDeclarativeForm from ResponseDefinitions
  */
 class DeclarativeSettingsController extends OCSController {
 	public function __construct(
@@ -81,5 +82,24 @@ class DeclarativeSettingsController extends OCSController {
 			$this->logger->error("Failed to set declarative settings value: " . $e->getMessage());
 			throw new OCSBadRequestException();
 		}
+	}
+
+	/**
+	 * Gets all declarative forms with the values prefilled.
+	 *
+	 * @return DataResponse<Http::STATUS_OK, list<SettingsDeclarativeForm>, array{}>
+	 * @throws NotLoggedInException
+	 * @NoSubAdminRequired
+	 *
+	 * 200: Forms returned
+	 */
+	#[NoAdminRequired]
+	public function getForms(): DataResponse {
+		$user = $this->userSession->getUser();
+		if ($user === null) {
+			throw new NotLoggedInException();
+		}
+		$this->declarativeManager->loadSchemas();
+		return new DataResponse($this->declarativeManager->getFormsWithValues($user, null, null));
 	}
 }
