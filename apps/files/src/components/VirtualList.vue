@@ -47,7 +47,7 @@
 import type { File, Folder, Node } from '@nextcloud/files'
 import type { PropType } from 'vue'
 
-import { debounce } from 'debounce'
+import debounce from 'debounce'
 import Vue from 'vue'
 
 import filesListWidthMixin from '../mixins/filesListWidth.ts'
@@ -213,13 +213,14 @@ export default Vue.extend({
 		const root = this.$el as HTMLElement
 		const thead = this.$refs?.thead as HTMLElement
 
-		this.resizeObserver = new ResizeObserver(debounce(() => {
+		const debounceSize = debounce(() => {
 			this.beforeHeight = before?.clientHeight ?? 0
 			this.headerHeight = thead?.clientHeight ?? 0
 			this.tableHeight = root?.clientHeight ?? 0
 			logger.debug('VirtualList: resizeObserver updated')
 			this.onScroll()
-		}, 100, false))
+		}, 100)
+		this.resizeObserver = new ResizeObserver(debounceSize)
 
 		this.resizeObserver.observe(before)
 		this.resizeObserver.observe(root)

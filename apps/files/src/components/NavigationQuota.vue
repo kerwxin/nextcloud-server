@@ -18,8 +18,8 @@
 	</NcAppNavigationItem>
 </template>
 
-<script>
-import { debounce, throttle } from 'throttle-debounce'
+<script lang="ts">
+import { defineComponent } from 'vue'
 import { formatFileSize } from '@nextcloud/files'
 import { generateUrl } from '@nextcloud/router'
 import { loadState } from '@nextcloud/initial-state'
@@ -27,6 +27,7 @@ import { showError } from '@nextcloud/dialogs'
 import { subscribe } from '@nextcloud/event-bus'
 import { translate } from '@nextcloud/l10n'
 import axios from '@nextcloud/axios'
+import debounce from 'debounce'
 
 import ChartPie from 'vue-material-design-icons/ChartPie.vue'
 import NcAppNavigationItem from '@nextcloud/vue/dist/Components/NcAppNavigationItem.js'
@@ -34,7 +35,33 @@ import NcProgressBar from '@nextcloud/vue/dist/Components/NcProgressBar.js'
 
 import logger from '../logger.js'
 
-export default {
+type StorageStats = {
+	/** the used storage in bytes */
+	used: number,
+	/**
+	 * the quota in bytes.
+	 * -1 if not computed;
+	 * -2 if unknown;
+	 * -3 if unlimited;
+	 */
+	quota: number,
+	/** the free storage in bytes */
+	free: number,
+	/** the relative usage in percent, e.g 63 */
+	relative: number,
+	/** the total storage in bytes, usually free+used */
+	total: number,
+	/** the owner of the storage */
+	owner: string,
+	/** the display name of the owner */
+	ownerDisplayName: string,
+	/** the mount type of the storage */
+	mountType: string,
+	/** the mount point of the storage */
+	mountPoint: string
+}
+
+export default defineComponent({
 	name: 'NavigationQuota',
 
 	components: {
@@ -46,7 +73,7 @@ export default {
 	data() {
 		return {
 			loadingStorageStats: false,
-			storageStats: loadState('files', 'storageStats', null),
+			storageStats: loadState('files', 'storageStats', {}) as StorageStats,
 		}
 	},
 
@@ -90,12 +117,12 @@ export default {
 	mounted() {
 		// If the user has a quota set, warn if the available account storage is <=0
 		//
-		// NOTE: This doesn't catch situations where actual *server* 
+		// NOTE: This doesn't catch situations where actual *server*
 		// disk (non-quota) space is low, but those should probably
 		// be handled differently anyway since a regular user can't
-		// can't do much about them (If we did want to indicate server disk 
+		// can't do much about them (If we did want to indicate server disk
 		// space matters to users, we'd probably want to use a warning
-		// specific to that situation anyhow. So this covers warning covers 
+		// specific to that situation anyhow. So this covers warning covers
 		// our primary day-to-day concern (individual account quota usage).
 		//
 		if (this.storageStats?.quota > 0 && this.storageStats?.free <= 0) {
@@ -105,13 +132,14 @@ export default {
 
 	methods: {
 		// From user input
-		debounceUpdateStorageStats: debounce(200, function(event) {
+		debounceUpdateStorageStats: debounce(function(event) {
 			this.updateStorageStats(event)
-		}),
+		}, 200),
+
 		// From interval or event bus
-		throttleUpdateStorageStats: throttle(1000, function(event) {
+		throttleUpdateStorageStats: debounce(function(event) {
 			this.updateStorageStats(event)
-		}),
+		}, 1000, { immediate: true }),
 
 		/**
 		 * Update the storage stats
@@ -131,9 +159,11 @@ export default {
 					throw new Error('Invalid storage stats')
 				}
 
-				// Warn the user if the available account storage changed from > 0 to 0 
+				const incomingStats = response.data.data as StorageStats
+
+				// Warn the user if the available account storage changed from > 0 to 0
 				// (unless only because quota was intentionally set to 0 by admin in the interim)
-				if (this.storageStats?.free > 0 && response.data.data?.free <= 0 && response.data.data?.quota > 0) {
+				if (this.storageStats?.free > 0 && incomingStats?.free <= 0 && incomingStats?.quota > 0) {
 					this.showStorageFullWarning()
 				}
 
@@ -142,7 +172,7 @@ export default {
 				logger.error('Could not refresh storage stats', { error })
 				// Only show to the user if it was manually triggered
 				if (event) {
-					showError(t('files', 'Could not refresh storage stats'))
+					showError(this.t('files', 'Could not refresh storage stats'))
 				}
 			} finally {
 				this.loadingStorageStats = false
@@ -155,7 +185,7 @@ export default {
 
 		t: translate,
 	},
-}
+})
 </script>
 
 <style lang="scss" scoped>
